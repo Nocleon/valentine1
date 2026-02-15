@@ -1463,13 +1463,19 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
   ];
 
   // Level 2 popups (5 hearts)
-  // NOTE: Canva share links usually DON'T behave as direct image URLs.
-  // This will try anyway, and if it fails you’ll get a fallback button inside the popup.
-  const PHOTO_URL = "https://www.canva.com/design/DAHBRllzkPg/b9n4aD0vvBwK1TzMGLQTOA/view?utm_content=DAHBRllzkPg&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h3157329721";
+  const PHOTO_EMBED_URL = "https://www.canva.com/design/DAHBRllzkPg/raB1WKzczqQWbQhZx7csvw/view?embed";
+  const PHOTO_LINK_URL = "https://www.canva.com/design/DAHBRllzkPg/raB1WKzczqQWbQhZx7csvw/view?utm_content=DAHBRllzkPg&utm_campaign=designshare&utm_medium=embeds&utm_source=link";
 
   const level2Popups = [
     { type:"youtube", title:"This song reminds me of you 💗", src:"https://www.youtube.com/embed/KEI4qSrkPAs?autoplay=1" },
-    { type:"image", title:"Us, right here 🥹", src: PHOTO_URL },
+    {
+      type:"image",
+      title:"Us, right here 🥹",
+      embedSrc: PHOTO_EMBED_URL,
+      linkHref: PHOTO_LINK_URL,
+      linkText:"Red Cute Love Heart Valentine Day Photo Collage",
+      byline:"Cleon Jardine"
+    },
     { type:"letter", title:"A letter from me", text:
 `I just want you to know this:
 I notice the little things. The way you move through life, the way you show up, the way you make ordinary moments feel like they matter.
@@ -1884,32 +1890,25 @@ Will you be my Valentine? 💗`;
     }
 
     if(data.type==="image"){
-      const safeSrc = escapeHTML(data.src||"");
+      const safeEmbedSrc = escapeHTML(data.embedSrc||"");
+      const safeLinkHref = escapeHTML(data.linkHref||"");
+      const safeLinkText = escapeHTML(data.linkText||"Open Canva design");
+      const safeByline = escapeHTML(data.byline||"");
       showModal({
         title:"💗 Found a heart!",
         bodyHTML:`
           <p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
-          <div class="imgBox">
-            <img id="popupImg" src="${safeSrc}" alt="Photo" />
+          <div style="position: relative; width: 100%; height: 0; padding-top: 80.0000%;
+            padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden;
+            border-radius: 8px; will-change: transform;">
+            <iframe loading="lazy" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0; margin: 0;"
+              src="${safeEmbedSrc}" allowfullscreen="allowfullscreen" allow="fullscreen">
+            </iframe>
           </div>
-          <div class="small" style="margin-top:10px">
-            If the image doesn’t load (Canva links often block direct images), use this:
-            <div style="margin-top:8px; display:flex; gap:10px; flex-wrap:wrap;">
-              <a class="btn ghost" style="text-decoration:none;" href="${safeSrc}" target="_blank" rel="noreferrer">Open photo link</a>
-              <span class="small">(Best fix: replace PHOTO_URL in code with a direct .jpg/.png URL.)</span>
-            </div>
-          </div>
+          <a href="${safeLinkHref}" target="_blank" rel="noopener noreferrer">${safeLinkText}</a>${safeByline ? ` by ${safeByline}` : ""}
           <p class="small" style="margin-top:10px">Click <b>Done</b> when you’re finished.</p>`,
         doneEnabled:true
       });
-      const img = document.getElementById("popupImg");
-      img.onerror = () => {
-        img.style.display="none";
-        const box = img.parentElement;
-        const fallback = document.createElement("div");
-        fallback.textContent = "IMAGE LINK DIDN’T LOAD (replace PHOTO_URL with a direct image URL)";
-        box.appendChild(fallback);
-      };
       return;
     }
 
