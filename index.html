@@ -249,52 +249,6 @@
     .optBtn:hover{transform:translateY(-1px); border-color:rgba(255,255,255,.26)}
     .feedback{margin-top:10px; font-weight:1000}
 
-    .levelIntroOverlay{
-      position:fixed; inset:0;
-      display:none;
-      place-items:center;
-      background:rgba(0,0,0,.72);
-      backdrop-filter: blur(5px);
-      z-index:85;
-      opacity:1;
-      transition:opacity .35s ease;
-    }
-    .levelIntroOverlay.show{display:grid}
-    .levelIntroOverlay.fadeOut{opacity:0}
-    .levelIntroCard{
-      width:min(780px, calc(100vw - 30px));
-      max-height:min(88vh, 900px);
-      overflow:auto;
-      border-radius:18px;
-      background:var(--card2);
-      border:1px solid rgba(255,255,255,.16);
-      box-shadow:0 24px 80px rgba(0,0,0,.65);
-      padding:18px;
-      text-align:center;
-    }
-    .levelIntroText{
-      margin:0;
-      white-space:pre-wrap;
-      line-height:1.45;
-      font-size:17px;
-      font-weight:800;
-      color:#fff;
-      text-align:left;
-      font-family:inherit;
-    }
-    .levelIntroActions{display:flex; justify-content:center; margin-top:14px}
-    .levelIntroBtn{
-      border:1px solid rgba(255,255,255,.22);
-      border-radius:13px;
-      padding:12px 18px;
-      font-weight:1000;
-      cursor:pointer;
-      color:#fff;
-      background:linear-gradient(135deg, #ff4fb3, #ff2d86);
-      transition:transform .15s ease, box-shadow .2s ease;
-    }
-    .levelIntroBtn:hover{transform:translateY(-1px); box-shadow:0 0 20px rgba(255,79,179,.38)}
-
     .ytWrap{width:100%; aspect-ratio:16/9; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.14); background:#000;}
     .ytWrap iframe{width:100%; height:100%; border:0}
     .imgBox{
@@ -513,15 +467,6 @@
     </div>
   </div>
 
-  <div class="levelIntroOverlay" id="level2IntroOverlay" aria-hidden="true">
-    <div class="levelIntroCard">
-      <pre class="levelIntroText" id="level2IntroText"></pre>
-      <div class="levelIntroActions">
-        <button class="levelIntroBtn" id="level2StartBtn">Let's Go →</button>
-      </div>
-    </div>
-  </div>
-
   <!-- CONGRATS OVERLAY + CONFETTI -->
   <canvas class="confettiFull" id="confettiCanvas"></canvas>
   <div class="winOverlay" id="winOverlay">
@@ -642,10 +587,6 @@
   const modalBody = document.getElementById("modalBody");
   const modalHint = document.getElementById("modalHint");
   const doneBtn = document.getElementById("doneBtn");
-
-  const level2IntroOverlay = document.getElementById("level2IntroOverlay");
-  const level2IntroText = document.getElementById("level2IntroText");
-  const level2StartBtn = document.getElementById("level2StartBtn");
 
   // Congrats overlay + confetti
   const winOverlay = document.getElementById("winOverlay");
@@ -1795,37 +1736,6 @@ More laughs. More late talks. More “remember when…”.
 
 Will you be my Valentine? 💗`;
 
-  const level2IntroMessage =
-`💝 CUPID'S LOVE MAZE 💝
-
-─────────────────────────────────────────
-
-His memories have returned, but the gate
-remains sealed. Something is still lost.
-
-The shadows scattered 5 pieces of his
-heart across this maze - each one holding
-something precious. A song. A moment.
-A treasure that makes him whole.
-
-He needs your help to find them all.
-
-──── THE MISSION ────
-
-🎮 Navigate using arrow keys
-👻 Avoid the shadow guardians
-💗 Find all 5 pieces of his heart
-✨ Discover what each piece holds
-💚 Collect all 5 to unlock the gate
-
-Each heart will reveal something special -
-something that matters deeply to him.
-
-When all 5 hearts are collected, the maze
-will glow green and the gate will finally
-open.
-
-Ready for the final search, CUPID?`;
 
   // =========================
   // GAME CONFIG
@@ -1872,6 +1782,7 @@ Ready for the final search, CUPID?`;
   let items = []; // {id, kind, x,y,r,collected}
   let hasWon = false;
   let awaitingLevel2Start = false;
+  let pendingMazeStartLevel = 1;
 
   const player={x:0,y:0,r:9,dx:0,dy:0,nextDx:0,nextDy:0};
 
@@ -2456,26 +2367,11 @@ Ready for the final search, CUPID?`;
 
   function openLevel2Intro(){
     awaitingLevel2Start = true;
+    pendingMazeStartLevel = 2;
     paused = true;
-    level2IntroText.textContent = level2IntroMessage;
-    level2IntroOverlay.classList.remove("fadeOut");
-    level2IntroOverlay.classList.add("show");
-    level2IntroOverlay.setAttribute("aria-hidden", "false");
-  }
-
-  function startLevel2FromPopup(){
-    if(!awaitingLevel2Start) return;
-    awaitingLevel2Start = false;
-    level2IntroOverlay.classList.add("fadeOut");
-
-    setTimeout(()=>{
-      level2IntroOverlay.classList.remove("show", "fadeOut");
-      level2IntroOverlay.setAttribute("aria-hidden", "true");
-      paused = false;
-      clearItemFlagsForLevel(2);
-      localStorage.setItem(COLLECT_KEY, "0");
-      startLevel(2, true);
-    }, 250);
+    showLayer(missionLayer);
+    setMusicVolume("mission");
+    turnOnParticles();
   }
 
   function tryGateTransition(){
@@ -2653,8 +2549,6 @@ Ready for the final search, CUPID?`;
   function startLevel(n, doFade){
     hasWon=false;
     awaitingLevel2Start = false;
-    level2IntroOverlay.classList.remove("show", "fadeOut");
-    level2IntroOverlay.setAttribute("aria-hidden", "true");
 
     level=n;
     map = buildLevelMaze(level);
@@ -3406,6 +3300,23 @@ Ready for the final search, CUPID?`;
   // =========================================================
   // BUTTONS
   // =========================================================
+  function startSelectedMaze(){
+    startAudioOnce();
+    setMusicVolume("game");
+    rampHumTo(audioOn ? 0.05 : 0.0001, pendingMazeStartLevel===2 ? 0.8 : 1.2);
+
+    if(pendingMazeStartLevel===2){
+      awaitingLevel2Start = false;
+      paused = false;
+      clearItemFlagsForLevel(2);
+      localStorage.setItem(COLLECT_KEY, "0");
+      startLevel(2, true);
+      return;
+    }
+
+    startLevel(1, true);
+  }
+
   rulesBtn.addEventListener("click",()=>{
     startAudioOnce();
     alert(
@@ -3416,17 +3327,7 @@ Ready for the final search, CUPID?`;
   });
 
   letsGoBtn.addEventListener("click", ()=>{
-    startAudioOnce();
-    setMusicVolume("game");
-    rampHumTo(audioOn ? 0.05 : 0.0001, 1.2);
-    startLevel(1, true);
-  });
-
-  level2StartBtn.addEventListener("click", ()=>{
-    startAudioOnce();
-    setMusicVolume("game");
-    rampHumTo(audioOn ? 0.05 : 0.0001, 0.8);
-    startLevel2FromPopup();
+    startSelectedMaze();
   });
 
   resetBtn.addEventListener("click",()=>{
@@ -3455,6 +3356,7 @@ Ready for the final search, CUPID?`;
     }
 
     if(p === Progress.INTRO_DONE || p === Progress.MISSION_SHOWN){
+      pendingMazeStartLevel = 1;
       showLayer(missionLayer);
       setMusicVolume("mission");
       setTimeout(()=>{ turnOnParticles(); }, 100);
@@ -3483,6 +3385,7 @@ Ready for the final search, CUPID?`;
       return;
     }
 
+    pendingMazeStartLevel = 1;
     showLayer(missionLayer);
     setMusicVolume("mission");
     setTimeout(()=>{ turnOnParticles(); }, 100);
