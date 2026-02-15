@@ -407,7 +407,15 @@
       position:relative;
       background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.06));
     }
-    .creditsInner{position:absolute; left:0; right:0; padding:24px 16px; animation:creditsRoll 18s linear forwards}
+    .creditsInner{
+      position:absolute;
+      left:0;
+      right:0;
+      padding:24px 16px;
+      line-height:1.9;
+      animation:creditsRoll 32s linear forwards;
+    }
+    .creditsInner p{margin:0 0 14px}
     @keyframes creditsRoll{
       from{transform:translateY(100%)}
       to{transform:translateY(-100%)}
@@ -1881,6 +1889,7 @@ Ready for the final search, CUPID?`;
   // confetti
   let confettiRunning=false;
   let confetti=[];
+  const confettiColors = ["#ff4fb3", "#ffd700", "#69ffb7", "#58a6ff", "#ff8c42", "#c77dff"];
 
   // =========================
   // MAP + COLLISION
@@ -2679,6 +2688,7 @@ Ready for the final search, CUPID?`;
         s: 2 + Math.random()*4,
         a: Math.random()*Math.PI*2,
         va: -0.2 + Math.random()*0.4,
+        color: confettiColors[(Math.random()*confettiColors.length)|0],
       });
     }
     confettiRunning = true;
@@ -2701,6 +2711,7 @@ Ready for the final search, CUPID?`;
       cctx.save();
       cctx.translate(p.x,p.y);
       cctx.rotate(p.a);
+      cctx.fillStyle = p.color;
       cctx.fillRect(-p.s, -p.s/2, p.s*2.2, p.s);
       cctx.restore();
     }
@@ -2982,6 +2993,7 @@ Ready for the final search, CUPID?`;
       <p>The maze represents the messy journey of remembering what matters most.</p>
       <p>Hearts and memories represent rebuilding love and meaning one piece at a time.</p>
       <p>The final heart represents commitment and choosing each other, fully and intentionally.</p>
+      <p style="margin-top:20px">Sorry I took so long with this, but I had to learn everything along the way to create all of this.</p>
       <p style="margin-top:26px; font-weight:1000">Made with love, for you.</p>
     `;
 
