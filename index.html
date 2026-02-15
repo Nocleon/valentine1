@@ -415,7 +415,7 @@
       <div id="modalBody"></div>
       <div class="row">
         <div class="small" id="modalHint"></div>
-        <button class="btn primary" id="doneBtn">Done ➜</button>
+        <button class="btn primary" id="doneBtn">Continue ➜</button>
       </div>
     </div>
   </div>
@@ -1545,39 +1545,59 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
   ];
 
   // Level 2 popups (5 hearts)
-  const PHOTO_EMBED_URL = "https://www.canva.com/design/DAHBRllzkPg/raB1WKzczqQWbQhZx7csvw/view?embed";
-  const PHOTO_LINK_URL = "https://www.canva.com/design/DAHBRllzkPg/raB1WKzczqQWbQhZx7csvw/view?utm_content=DAHBRllzkPg&utm_campaign=designshare&utm_medium=embeds&utm_source=link";
-
   const level2Popups = [
-    { type:"youtube", title:"This song reminds me of you 💗", src:"https://www.youtube.com/embed/KEI4qSrkPAs?autoplay=1" },
+    {
+      type:"youtube",
+      title:"🎵 Eyedress — She Looks Just Like A Dream",
+      src:"https://www.youtube.com/embed/XSzMpmmmf9o?si=Wg8kwJ5Ob8e8uZ9W&autoplay=1"
+    },
     {
       type:"image",
-      title:"Us, right here 🥹",
-      embedSrc: PHOTO_EMBED_URL,
-      linkHref: PHOTO_LINK_URL,
+      title:"Us right here.(we need more photos together)",
+      embedSrc:"https://www.canva.com/design/DAHBRW7P5Kk/ldNZ68493T_jcfM4RNWDHg/view?embed",
+      linkHref:"https://www.canva.com/design/DAHBRW7P5Kk/ldNZ68493T_jcfM4RNWDHg/view?utm_content=DAHBRW7P5Kk&utm_campaign=designshare&utm_medium=embeds&utm_source=link",
+      linkText:"Aesthetic Vintage Lifestyle Photo Collage",
+      byline:"Cleon Jardine"
+    },
+    {
+      type:"image",
+      title:"The kind of pretty that makes me pause.",
+      embedSrc:"https://www.canva.com/design/DAHBRllzkPg/raB1WKzczqQWbQhZx7csvw/view?embed",
+      linkHref:"https://www.canva.com/design/DAHBRllzkPg/raB1WKzczqQWbQhZx7csvw/view?utm_content=DAHBRllzkPg&utm_campaign=designshare&utm_medium=embeds&utm_source=link",
       linkText:"Red Cute Love Heart Valentine Day Photo Collage",
       byline:"Cleon Jardine"
     },
-    { type:"letter", title:"A letter from me", text:
-`I just want you to know this:
-I notice the little things. The way you move through life, the way you show up, the way you make ordinary moments feel like they matter.
+    {
+      type:"image",
+      title:"Little truths I never want to forget.",
+      embedSrc:"https://www.canva.com/design/DAHBRe38Lcw/Bn4ZmshFePlzZjtj3HE5vw/view?embed",
+      linkHref:"https://www.canva.com/design/DAHBRe38Lcw/Bn4ZmshFePlzZjtj3HE5vw/view?utm_content=DAHBRe38Lcw&utm_campaign=designshare&utm_medium=embeds&utm_source=link",
+      linkText:"Photo Collage Moodboard Couple Phone Wallpaper",
+      byline:"Cleon Jardine",
+      tall:true
+    },
+    { type:"letter", title:"My Love,", text:
+`My Love,
 
-You’re not a “maybe” to me.
-You’re the kind of person I’d pick on purpose, every time.
+I’ve been thinking about how to put this into words, and honestly, I don’t even know if words can fully explain how I feel. But I’m going to try.
 
-Thank you for being you.
-And thank you for letting me be close to you.` },
-    { type:"letter", title:"One more thing I need you to hear", text:
-`You’ve been on my mind in the quiet moments.
-Not in a heavy way…
-in a soft way.
+You’re my first real girlfriend. Not just in title, but in experience. My first real date. My first real Valentine. The first person I’ve shared so many genuine, meaningful moments with. And when I say I don’t want that to change, I truly mean it. I don’t want to look back years from now and say “that was just a phase.” I want to look back and say, “that was the beginning of everything.”
 
-Like: “I’m grateful you exist.”
-Like: “I’m proud of you.”
-Like: “I want you close.”` },
-    { type:"letter", title:"Last one…", text:
-`No matter how far the maze got…
-you were still the destination.` },
+I don’t feel like sharing these kinds of firsts with anyone else. I don’t want to build these memories with anyone else. I chose you, and I keep choosing you.
+
+We’ve had our hiccups. We’ve had moments where things felt shaky at the start, or even at the end. We’ve had times where it wasn’t perfect. But the truth is, I don’t care if it starts shaky or ends a little messy — what matters to me is the process. The time in between. The laughs. The calm moments. The deep talks. The way it feels when we’re just together.
+
+When I’m with you, I feel calm. Even when I’m stressed, your presence does something to me. It grounds me. It reminds me that I’m not alone in this. And I genuinely enjoy being around you. I enjoy looking at you. You’re so beautiful it actually catches me off guard sometimes. I hope you know that. To me, you’re my number one model. So yes — keep sending those pictures. Don’t be shy. I love seeing you.
+
+There have been times where fear creeps in. Times where I think about disconnecting just to avoid getting hurt. But every single time, I realize I’d rather risk being vulnerable with you than miss out on what we could become. I don’t want to miss out on loving you fully. I don’t want to miss out on us growing, understanding each other more, creating more memories, spending more time together.
+
+I want more time with you. More experiences. More “firsts.” More comfort. More openness. I want us to be vulnerable with each other. To share our emotions instead of hiding them. To choose each other even when it’s hard.
+
+I really love you. I truly do. And I hope this isn’t just my first Valentine’s with you — I hope it’s the first of many. I hope you’ll continue being my girlfriend, my partner, my person. Not just for now, but going forward.
+
+You’re special to me in a way I don’t feel for anyone else. And I don’t want that to change.
+
+P.S Cleo❤️` },
   ];
 
   const finalSecretLetter =
@@ -2080,7 +2100,7 @@ Ready for the final search, CUPID?`;
         title:"💗 Found a heart!",
         bodyHTML:`<p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
           <div class="ytWrap"><iframe src="${data.src}" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>
-          <p class="small" style="margin-top:10px">Click <b>Done</b> when you’re finished.</p>`,
+          <p class="small" style="margin-top:10px">Click <b>Continue</b> when you’re finished.</p>`,
         doneEnabled:true
       });
       return;
@@ -2091,19 +2111,20 @@ Ready for the final search, CUPID?`;
       const safeLinkHref = escapeHTML(data.linkHref||"");
       const safeLinkText = escapeHTML(data.linkText||"Open Canva design");
       const safeByline = escapeHTML(data.byline||"");
+      const padTop = data.tall ? "177.7778%" : "80.0000%";
       showModal({
         title:"💗 Found a heart!",
         bodyHTML:`
-          <p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
-          <div style="position: relative; width: 100%; height: 0; padding-top: 80.0000%;
+          <div style="position: relative; width: 100%; height: 0; padding-top: ${padTop};
             padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden;
             border-radius: 8px; will-change: transform;">
             <iframe loading="lazy" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0; margin: 0;"
               src="${safeEmbedSrc}" allowfullscreen="allowfullscreen" allow="fullscreen">
             </iframe>
           </div>
+          <p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
           <a href="${safeLinkHref}" target="_blank" rel="noopener noreferrer">${safeLinkText}</a>${safeByline ? ` by ${safeByline}` : ""}
-          <p class="small" style="margin-top:10px">Click <b>Done</b> when you’re finished.</p>`,
+          <p class="small" style="margin-top:10px">Click <b>Continue</b> when you’re finished.</p>`,
         doneEnabled:true
       });
       return;
@@ -2113,8 +2134,9 @@ Ready for the final search, CUPID?`;
       title:"💗 Found a heart!",
       bodyHTML:`<p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
         <div style="white-space:pre-wrap; background:#0c0d1d; border:1px solid rgba(255,255,255,.14);
-          border-radius:14px; padding:14px; color:#fff; line-height:1.4">${escapeHTML(data.text)}</div>
-        <p class="small" style="margin-top:10px">Click <b>Done</b> when you’re finished.</p>`,
+          border-radius:14px; padding:22px; color:#ffeef9; line-height:1.72; max-width:680px;
+          margin:0 auto; font-family:'Dancing Script','Great Vibes','Pacifico',cursive; font-size:26px;">${escapeHTML(data.text)}</div>
+        <p class="small" style="margin-top:10px">Click <b>Continue</b> when you’re finished.</p>`,
       doneEnabled:true
     });
   }
@@ -3154,5 +3176,3 @@ Ready for the final search, CUPID?`;
 </script>
 </body>
 </html>
-
-
