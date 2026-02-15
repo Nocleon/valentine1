@@ -2757,6 +2757,7 @@ Ready for the final search, CUPID?`;
     showBubbleFrom: null,
     bubbleText: "",
     nextLineAt: 0,
+    onScriptDone: null,
 
     heart: {active:false, x:0,y:0, r:16, hover:false, pulse:0, clickable:false},
     floatingHearts: [],
@@ -2905,29 +2906,12 @@ Ready for the final search, CUPID?`;
     ending.gate.y = midY;
     ending.gate.openAmt = 0;
 
-    ending.lines = [
-      {from:"pink", text:"I thought I’d never make it…"},
-      {from:"blue", text:"Me too… Every day felt longer without you here."},
-      {from:"pink", text:"You’re… here."},
-      {from:"blue", text:"But you did. You’re finally back."},
-      {from:"pink", text:"It’s been too long. I’ve missed this."},
-      {from:"pink", text:"I would’ve made it back sooner… but those ghosts took my hearts and my memories right at the gate."},
-      {from:"blue", text:"Did you get them all back?"},
-      {from:"pink", text:"Yeah… I did."},
-      {from:"pink", text:"But it still feels incomplete."},
-      {from:"pink", text:"Like I’m missing something."},
-      {from:"blue", text:"Hmm… maybe that’s because I’ve been holding onto the last piece."},
-      {from:"pink", text:"The last piece?"},
-      {action:"spawnHeart"},
-      {from:"blue", text:"I was waiting to give it to you."},
-      {from:"pink", text:"Another heart?"},
-      {from:"pink", text:"…What’s in it?"}
-    ];
-
+    ending.lines = [];
     ending.lineIndex=-1;
     ending.showBubbleFrom=null;
     ending.bubbleText="";
     ending.nextLineAt=0;
+    ending.onScriptDone = null;
 
     ending.heart.active=false;
     ending.heart.hover=false;
@@ -2937,14 +2921,25 @@ Ready for the final search, CUPID?`;
     fadeTo(()=>{ showLayer(endingLayer); });
   }
 
+  function startEndingScript(now, lines, onDone=null){
+    ending.lines = lines;
+    ending.lineIndex = -1;
+    ending.onScriptDone = onDone;
+    ending.nextLineAt = now;
+    advanceEndingDialogueAuto(now);
+  }
+
   function advanceEndingDialogueAuto(now){
     ending.lineIndex++;
     const line = ending.lines[ending.lineIndex];
     if(!line){
-      ending.phase = "heartAwaitClick";
       ending.bubbleText = "";
       ending.showBubbleFrom = null;
-      ending.heart.clickable = true;
+      if(typeof ending.onScriptDone === "function"){
+        const done = ending.onScriptDone;
+        ending.onScriptDone = null;
+        done(now);
+      }
       return;
     }
 
@@ -2952,17 +2947,17 @@ Ready for the final search, CUPID?`;
       ending.heart.active = true;
       ending.heart.clickable = false;
       ending.heart.pulse = 0;
-      ending.heart.x = ending.blue.x - 10;
-      ending.heart.y = ending.blue.y - 4;
+      ending.heart.x = (ending.pink.x + ending.blue.x)*0.5;
+      ending.heart.y = ending.pink.y - 118;
       ending.bubbleText = "";
       ending.showBubbleFrom = null;
-      ending.nextLineAt = now + 850;
+      ending.nextLineAt = now + (line.delay ?? 900);
       return;
     }
 
     ending.showBubbleFrom = line.from;
     ending.bubbleText = line.text;
-    const delay = Math.max(1900, Math.min(3400, 950 + line.text.length * 28));
+    const delay = line.delay ?? Math.max(1900, Math.min(3400, 950 + line.text.length * 28));
     ending.nextLineAt = now + delay;
   }
 
@@ -3204,7 +3199,7 @@ Ready for the final search, CUPID?`;
       if(ending.phase==="pauseAfterGateEnter"){
         ectx.fillStyle="#000";
         ectx.fillRect(0,0,w,h);
-        if((now-ending.t0)/1000 > 1.2){ ending.phase="fadeToMeadow"; ending.t0=now; }
+        if((now-ending.t0)/1000 > 0.5){ ending.phase="fadeToMeadow"; ending.t0=now; }
         requestAnimationFrame(drawEndingFrame); return;
       }
 
@@ -3214,45 +3209,77 @@ Ready for the final search, CUPID?`;
         ectx.fillStyle=`rgba(0,0,0,${1-easeOut(t)})`;
         ectx.fillRect(0,0,w,h);
         if(t>=1){
-          ending.phase="meadowWalk";
+          ending.phase="gateExitDialogue";
           ending.t0=now;
           ending.gate.x = w*0.22;
           ending.gate.y = h*0.55;
           ending.gate.openAmt = 1;
           ending.pink.x = ending.gate.x + 8;
           ending.pink.y = ending.gate.y;
-          ending.blue.x = w + 140;
+          ending.blue.x = -140;
           ending.blue.y = ending.gate.y;
         }
         requestAnimationFrame(drawEndingFrame); return;
       }
     }
 
-    if(["meadowWalk","meetApproach","meetDialogueAuto","heartAwaitClick","valentineModal","celebration","credits"].includes(ending.phase)){
+    if(["gateExitDialogue","blueEntrance","reunionDialogue","heartAwaitClick","valentineModal","celebration","credits"].includes(ending.phase)){
       drawMeadowBackground(w,h);
       drawGateCard(ectx, ending.gate.x, ending.gate.y, "", "", 0, 1);
 
-      if(ending.phase==="meadowWalk"){
-        const t = clamp((now-ending.t0)/1000 / 2.4, 0, 1);
-        const pinkMeetX = meadowTreeCenterX(w) - 21;
-        ending.pink.x = lerp(ending.gate.x + 8, pinkMeetX, easeInOut(t));
-        drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
-        if(t>=1){ ending.phase="meetApproach"; ending.t0=now; }
-        requestAnimationFrame(drawEndingFrame); return;
+      if(ending.phase==="gateExitDialogue"){
+        if(ending.lineIndex < 0){
+          startEndingScript(now, [
+            {from:"pink", text:"Whewww…", delay:1200},
+            {from:"pink", text:"I thought I’d never make it…", delay:1500}
+          ], (doneAt)=>{
+            ending.phase = "blueEntrance";
+            ending.t0 = doneAt;
+            ending.blue.x = -140;
+            ending.blue.y = ending.pink.y;
+            startEndingScript(doneAt, [
+              {from:"blue", text:"Me too…", delay:900},
+              {from:"blue", text:"Every day felt longer without you here.", delay:1300}
+            ], ()=>{});
+          });
+        }
       }
 
-      if(ending.phase==="meetApproach"){
-        const t = clamp((now-ending.t0)/1000 / 4.6, 0, 1);
-        ending.blue.x = lerp(w+140, meadowTreeCenterX(w) + 21, easeInOut(t));
-        drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
-        drawDioPac(ectx, ending.blue.x, ending.blue.y, now, Math.PI, "#3aa0ff", 18);
-        if(t>=1){
-          ending.phase="meetDialogueAuto";
-          ending.t0=now;
-          ending.lineIndex=-1;
-          advanceEndingDialogueAuto(now);
+      if(ending.phase==="blueEntrance"){
+        const blueStopX = meadowTreeCenterX(w) + 24;
+        const t = clamp((now-ending.t0)/1000 / 5.2, 0, 1);
+        ending.blue.x = lerp(-140, blueStopX, easeInOut(t));
+
+        const dist = Math.abs(ending.blue.x - ending.pink.x);
+        if(dist <= 46){
+          ending.phase = "reunionDialogue";
+          startEndingScript(now, [
+            {from:"pink", text:"You’re… here.", delay:800},
+            {from:"blue", text:"I never left.", delay:800},
+            {from:"pink", text:"It’s been too long.", delay:500},
+            {from:"pink", text:"I’ve missed this.", delay:1000},
+            {from:"pink", text:"I would’ve come back sooner…", delay:700},
+            {from:"pink", text:"…but those ghosts caught me at the gate.", delay:700},
+            {from:"pink", text:"They took everything.", delay:700},
+            {from:"pink", text:"My hearts.", delay:700},
+            {from:"pink", text:"My memories.", delay:700},
+            {from:"blue", text:"Did you get them all back?", delay:700},
+            {from:"pink", text:"Yeah…", delay:700},
+            {from:"pink", text:"I did.", delay:900},
+            {from:"pink", text:"But it still feels incomplete.", delay:700},
+            {from:"pink", text:"Like I’m missing something.", delay:700},
+            {from:"blue", text:"Hmm…", delay:700},
+            {from:"blue", text:"Maybe that’s because I’ve been holding onto the last piece.", delay:900},
+            {from:"pink", text:"The last piece?", delay:700},
+            {action:"spawnHeart", delay:800},
+            {from:"blue", text:"I was waiting to give it to you.", delay:900},
+            {from:"pink", text:"Another heart?", delay:700},
+            {from:"pink", text:"…What’s in it?", delay:1000}
+          ], ()=>{
+            ending.phase = "heartAwaitClick";
+            ending.heart.clickable = true;
+          });
         }
-        requestAnimationFrame(drawEndingFrame); return;
       }
 
       const celebratoryPhase = (ending.phase==="celebration" || ending.phase==="credits");
@@ -3264,7 +3291,7 @@ Ready for the final search, CUPID?`;
         drawFloatingHearts(now, w, h);
       }
 
-      if(ending.phase==="meetDialogueAuto"){
+      if(ending.phase==="gateExitDialogue" || ending.phase==="blueEntrance" || ending.phase==="reunionDialogue"){
         if(ending.bubbleText){
           const bx = ending.showBubbleFrom==="blue" ? ending.blue.x : ending.pink.x;
           const by = ending.showBubbleFrom==="blue" ? ending.blue.y : ending.pink.y;
@@ -3297,7 +3324,7 @@ Ready for the final search, CUPID?`;
           ectx.restore();
         }
 
-        if(now >= ending.nextLineAt){
+        if(ending.nextLineAt && now >= ending.nextLineAt){
           advanceEndingDialogueAuto(now + 380);
         }
       }
