@@ -569,7 +569,6 @@
   const fade = document.getElementById("fade");
   const rulesBtn = document.getElementById("rulesBtn");
   const letsGoBtn = document.getElementById("letsGoBtn");
-  const mkTitle = document.getElementById("mkTitle");
 
   const hudLevel = document.getElementById("hudLevel");
   const hudLives = document.getElementById("hudLives");
@@ -661,11 +660,7 @@
   // MISSION PANEL COPY
   // =========================================================
   const missionText = document.getElementById("missionText");
-  const missionCopy = {
-    1: {
-      title: "🗝️ THE MEMORY KEEPER 🗝️",
-      cta: "Let’s Go →",
-      body:
+  missionText.innerHTML =
 `His memories have been scattered deep within this maze. Five precious moments, lost and waiting to be found.
 
 You've agreed to help. But memories must be verified before they can be reclaimed —
@@ -679,34 +674,7 @@ You've agreed to help. But memories must be verified before they can be reclaime
 💚 Collect all 5 to unlock the exit
 
 Then… you’ll enter the gate, and what’s waiting beyond it?
-<span class="muted">Only one way to find out. 💭</span>`
-    },
-    2: {
-      title: "🗝️ THE MEMORY KEEPER 🗝️",
-      cta: "Enter Maze 2 →",
-      body:
-`The first maze is cleared, but a second one now opens.
-
-──────── THE NEXT MISSION ────────
-🎮 Navigate using arrow keys
-👻 Avoid the shadow ghosts
-💗 Find all 5 hidden hearts
-✨ Open each heart popup memory
-🚪 Collect all 5 to unlock the final gate
-
-Ready for the next maze?
-<span class="muted">Step in and keep going. 💭</span>`
-    }
-  };
-
-  function configureMissionPanel(levelToStart = 1){
-    const cfg = missionCopy[levelToStart] || missionCopy[1];
-    mkTitle.textContent = cfg.title;
-    missionText.innerHTML = cfg.body;
-    letsGoBtn.textContent = cfg.cta;
-  }
-
-  configureMissionPanel(1);
+<span class="muted">Only one way to find out. 💭</span>`;
 
   // =========================================================
   // AUDIO (Music + Evans voice fx + Ambient maze hum)
@@ -2401,7 +2369,6 @@ Will you be my Valentine? 💗`;
     awaitingLevel2Start = true;
     pendingMazeStartLevel = 2;
     paused = true;
-    configureMissionPanel(2);
     showLayer(missionLayer);
     setMusicVolume("mission");
     turnOnParticles();
@@ -3347,7 +3314,6 @@ Will you be my Valentine? 💗`;
       return;
     }
 
-    configureMissionPanel(1);
     startLevel(1, true);
   }
 
@@ -3391,7 +3357,6 @@ Will you be my Valentine? 💗`;
 
     if(p === Progress.INTRO_DONE || p === Progress.MISSION_SHOWN){
       pendingMazeStartLevel = 1;
-      configureMissionPanel(1);
       showLayer(missionLayer);
       setMusicVolume("mission");
       setTimeout(()=>{ turnOnParticles(); }, 100);
@@ -3421,7 +3386,6 @@ Will you be my Valentine? 💗`;
     }
 
     pendingMazeStartLevel = 1;
-    configureMissionPanel(1);
     showLayer(missionLayer);
     setMusicVolume("mission");
     setTimeout(()=>{ turnOnParticles(); }, 100);
