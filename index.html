@@ -2281,7 +2281,7 @@ Ready for the final search, CUPID?`;
         title:"💗 Found a heart!",
         bodyHTML:`${miniCaptionHTML}<p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
           <div class="ytWrap"><iframe src="${data.src}" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>
-          <p class="small" style="margin-top:10px">Click <b>Continue</b> when you’re finished.</p>`,
+          <p class="small" style="margin-top:10px">Click <b>Done</b> when you’re finished.</p>`,
         doneEnabled:true
       });
       return;
@@ -2296,6 +2296,7 @@ Ready for the final search, CUPID?`;
       showModal({
         title:"💗 Found a heart!",
         bodyHTML:`
+          <p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
           <div style="position: relative; width: 100%; height: 0; padding-top: ${padTop};
             padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden;
             border-radius: 8px; will-change: transform;">
@@ -2303,9 +2304,8 @@ Ready for the final search, CUPID?`;
               src="${safeEmbedSrc}" allowfullscreen="allowfullscreen" allow="fullscreen">
             </iframe>
           </div>
-          <p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
           <a href="${safeLinkHref}" target="_blank" rel="noopener noreferrer">${safeLinkText}</a>${safeByline ? ` by ${safeByline}` : ""}
-          <p class="small" style="margin-top:10px">Click <b>Continue</b> when you’re finished.</p>`,
+          <p class="small" style="margin-top:10px">Click <b>Done</b> when you’re finished.</p>`,
         doneEnabled:true
       });
       return;
@@ -2315,9 +2315,9 @@ Ready for the final search, CUPID?`;
       title:"💗 Found a heart!",
       bodyHTML:`<p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
         <div style="white-space:pre-wrap; background:#0c0d1d; border:1px solid rgba(255,255,255,.14);
-          border-radius:14px; padding:22px; color:#ffeef9; line-height:1.72; max-width:680px;
-          margin:0 auto; font-family:'Dancing Script','Great Vibes','Pacifico',cursive; font-size:26px;">${escapeHTML(data.text)}</div>
-        <p class="small" style="margin-top:10px">Click <b>Continue</b> when you’re finished.</p>`,
+          border-radius:14px; padding:14px; color:#fff; line-height:1.45; max-width:680px;
+          margin:0 auto; font-family:'Dancing Script','Great Vibes','Pacifico',cursive; font-size:22px; text-align:center;">${escapeHTML(data.text)}</div>
+        <p class="small" style="margin-top:10px">Click <b>Done</b> when you’re finished.</p>`,
       doneEnabled:true
     });
   }
