@@ -1150,10 +1150,10 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
     dioToCenter: 3.2,
 
     // Ghost choreography state machine timing
-    ghostsEnter: 2.0,
+    ghostsEnter: 2.8,
     dioPanics: 0.95,
-    attack: 0.2,
-    retreat: 1.7,
+    attack: 1.4,
+    retreat: 2.6,
 
     fadeOut: 2.6,
     blackHold: 1.6,
@@ -1315,8 +1315,9 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
       const g1StartY = midY - 44;
       const g2StartY = midY + 44;
 
-      const g1NearX = dioEndX + 54;
-      const g2NearX = dioEndX - 54;
+      // Keep the ghosts roughly ~2 inches from Dio before the attack.
+      const g1NearX = dioEndX + 192;
+      const g2NearX = dioEndX - 192;
       const g1NearY = midY - 14;
       const g2NearY = midY + 14;
 
@@ -1352,10 +1353,19 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
           g1.y = lerp(g1StartY, g1NearY, u);
           g2.x = lerp(g2StartX, g2NearX, u);
           g2.y = lerp(g2StartY, g2NearY, u);
-          dio.facing = 0;
+
+          const lookInterval = lerp(540, 170, u);
+          if(introState.choreo.nextFlipAt===0){
+            introState.choreo.nextFlipAt = now + lookInterval;
+            introState.choreo.panicFacingLeft = false;
+          }
+          if(now >= introState.choreo.nextFlipAt){
+            introState.choreo.panicFacingLeft = !introState.choreo.panicFacingLeft;
+            introState.choreo.nextFlipAt = now + lookInterval;
+          }
+          dio.facing = introState.choreo.panicFacingLeft ? Math.PI : 0;
           introState.attackFlash = 0;
           introState.choreo.attackTriggered = false;
-          introState.choreo.nextFlipAt = 0;
         }
         else if(local < IntroT.ghostsEnter + IntroT.dioPanics){
           introState.choreo.state = "dio_panics";
@@ -1367,7 +1377,7 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
           g2.x = lerp(g2NearX, g2AttackX - 18, easeInOut(u));
           g2.y = lerp(g2NearY, g2AttackY, easeOut(u));
 
-          const flipInterval = lerp(400, 120, u);
+          const flipInterval = lerp(240, 70, u);
           if(introState.choreo.nextFlipAt===0){
             introState.choreo.nextFlipAt = now + flipInterval;
           }
