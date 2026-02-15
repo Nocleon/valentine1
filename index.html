@@ -329,6 +329,89 @@
 
     /* Confetti */
     .confettiFull{position:fixed; inset:0; pointer-events:none; z-index:76; display:none}
+
+    .valOverlay{
+      position:fixed; inset:0;
+      display:none; place-items:center;
+      background:rgba(4,4,12,.72);
+      backdrop-filter:blur(6px);
+      z-index:95;
+      opacity:0;
+      transition:opacity .45s ease;
+    }
+    .valOverlay.show{display:grid; opacity:1}
+    .valCard{
+      width:min(560px, calc(100vw - 26px));
+      background:linear-gradient(180deg,#fff5fb,#ffe6f4);
+      border-radius:20px;
+      border:2px solid rgba(255,79,179,.34);
+      box-shadow:0 24px 90px rgba(0,0,0,.45);
+      padding:22px 18px 24px;
+      color:#3e1630;
+      position:relative;
+      overflow:hidden;
+    }
+    .valEmoji{font-size:54px; text-align:center; margin:2px 0 8px}
+    .valQuestionRow{display:flex; align-items:flex-end; justify-content:flex-end; gap:8px; margin-top:16px}
+    .valQuestion{
+      flex:1;
+      font-family:'Pacifico','Great Vibes','Dancing Script',cursive;
+      color:#e11d48;
+      font-size:clamp(28px,5vw,40px);
+      line-height:1.05;
+      margin:0;
+      text-align:center;
+    }
+    .valRose{font-size:22px; margin-bottom:5px}
+    .valBtnWrap{position:relative; height:130px; margin-top:18px}
+    .valBtn{position:absolute; min-width:120px; justify-content:center}
+    #yesValBtn{left:calc(50% - 135px); top:20px}
+    #noValBtn{left:calc(50% + 15px); top:20px; transition:left .18s ease, top .18s ease, transform .18s ease}
+
+    .endingTitle{
+      position:fixed; left:50%; bottom:26px;
+      transform:translateX(-50%);
+      z-index:88;
+      font-weight:1000;
+      color:#fff;
+      background:rgba(15,16,34,.75);
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:999px;
+      padding:10px 18px;
+      letter-spacing:.3px;
+      display:none;
+      animation:titlePulse 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes titlePulse{from{transform:translateX(-50%) scale(1)}to{transform:translateX(-50%) scale(1.03)}}
+
+    .inviteCard, .creditsCard{
+      width:min(680px, calc(100vw - 24px));
+      max-height:min(85vh, 860px);
+      overflow:auto;
+      background:rgba(255,255,255,.94);
+      color:#2d1235;
+      border-radius:20px;
+      border:1px solid rgba(255,79,179,.35);
+      box-shadow:0 20px 70px rgba(0,0,0,.38);
+      padding:20px;
+    }
+    .inviteBody{white-space:pre-line; line-height:1.55; font-weight:800}
+
+    .creditsCard{background:rgba(10,11,26,.95); color:#f7f1ff; text-align:center}
+    .creditsScroll{
+      overflow:hidden;
+      height:min(52vh, 420px);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:14px;
+      margin-top:8px;
+      position:relative;
+      background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.06));
+    }
+    .creditsInner{position:absolute; left:0; right:0; padding:24px 16px; animation:creditsRoll 18s linear forwards}
+    @keyframes creditsRoll{
+      from{transform:translateY(100%)}
+      to{transform:translateY(-100%)}
+    }
   </style>
 </head>
 <body>
@@ -442,6 +525,44 @@
     </div>
   </div>
 
+  <div class="endingTitle" id="endingTitle">❤️ Cleo x Dio ❤️</div>
+
+  <div class="valOverlay" id="valOverlay" aria-hidden="true">
+    <div class="valCard" id="valCard">
+      <div class="valEmoji">💘</div>
+      <div class="valQuestionRow">
+        <p class="valQuestion">Will you be my Valentine?</p>
+        <span class="valRose">🌹</span>
+      </div>
+      <div class="valBtnWrap" id="valBtnWrap">
+        <button class="btn ok valBtn" id="yesValBtn">Yes ❤️</button>
+        <button class="btn danger valBtn" id="noValBtn">No 😟</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="valOverlay" id="inviteOverlay" aria-hidden="true">
+    <div class="inviteCard">
+      <div class="inviteBody" id="inviteBody"></div>
+      <div class="btnRow" style="justify-content:center; margin-top:16px">
+        <button class="btn primary" id="inviteContinueBtn">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="valOverlay" id="creditsOverlay" aria-hidden="true">
+    <div class="creditsCard">
+      <h2 style="margin:0">Rolling Credits</h2>
+      <div class="creditsScroll">
+        <div class="creditsInner" id="creditsInner"></div>
+      </div>
+      <div class="btnRow" style="justify-content:center; margin-top:16px">
+        <button class="btn ghost" id="restartBtn">Restart</button>
+        <button class="btn primary" id="mainMenuBtn">Main Menu</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 (() => {
   // =========================================================
@@ -521,6 +642,20 @@
   const continueBtn = document.getElementById("continueBtn");
   const confettiCanvas = document.getElementById("confettiCanvas");
   const cctx = confettiCanvas.getContext("2d");
+
+  const valOverlay = document.getElementById("valOverlay");
+  const valCard = document.getElementById("valCard");
+  const yesValBtn = document.getElementById("yesValBtn");
+  const noValBtn = document.getElementById("noValBtn");
+  const valBtnWrap = document.getElementById("valBtnWrap");
+  const inviteOverlay = document.getElementById("inviteOverlay");
+  const inviteBody = document.getElementById("inviteBody");
+  const inviteContinueBtn = document.getElementById("inviteContinueBtn");
+  const creditsOverlay = document.getElementById("creditsOverlay");
+  const creditsInner = document.getElementById("creditsInner");
+  const restartBtn = document.getElementById("restartBtn");
+  const mainMenuBtn = document.getElementById("mainMenuBtn");
+  const endingTitle = document.getElementById("endingTitle");
 
   function showLayer(layer){
     [introLayer, missionLayer, gameLayer, endingLayer].forEach(l=>l.classList.remove("active"));
@@ -717,6 +852,38 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
     osc.connect(g).connect(ac.destination);
     osc.start(t);
     osc.stop(t+0.26);
+  }
+
+  function playHeartUnlockSfx(){
+    if(!ac || !audioOn) return;
+    const t = ac.currentTime;
+    const osc1 = ac.createOscillator();
+    const osc2 = ac.createOscillator();
+    const filt = ac.createBiquadFilter();
+    const g = ac.createGain();
+
+    osc1.type = "sine";
+    osc2.type = "triangle";
+    osc1.frequency.setValueAtTime(420, t);
+    osc1.frequency.exponentialRampToValueAtTime(760, t+0.24);
+    osc2.frequency.setValueAtTime(630, t);
+    osc2.frequency.exponentialRampToValueAtTime(980, t+0.24);
+
+    filt.type = "lowpass";
+    filt.frequency.setValueAtTime(2200, t);
+
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.11, t+0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+0.48);
+
+    osc1.connect(filt);
+    osc2.connect(filt);
+    filt.connect(g).connect(ac.destination);
+
+    osc1.start(t);
+    osc2.start(t);
+    osc1.stop(t+0.5);
+    osc2.stop(t+0.5);
   }
 
   muteBtn.addEventListener("click",()=>{
@@ -2554,39 +2721,30 @@ Ready for the final search, CUPID?`;
     mode: "off",
     phase: "approachGate",
     t0: 0,
-    clickArmed: false,
 
-    // characters
     pink: {x:-120, y:0, facing:0, r:18},
     blue: {x:0, y:0, facing:Math.PI, r:18},
-
-    // gate
     gate: {x:0, y:0, openAmt:0},
 
-    // dialogue
     lines: [],
-    lineIndex: 0,
-    showBubbleFrom: null, // "pink" | "blue" | null
+    lineIndex: -1,
+    showBubbleFrom: null,
     bubbleText: "",
+    nextLineAt: 0,
 
-    // heart gift
-    heart: {active:false, x:0,y:0, r:16, hover:false, pulse:0},
-
-    // camera/bg
+    heart: {active:false, x:0,y:0, r:16, hover:false, pulse:0, clickable:false},
+    celebrationTimer: null,
+    inviteTimer: null,
     fade: 0
   };
 
   function drawMeadowBackground(w,h){
-    // clean white background
     ectx.fillStyle="#f7f7ff";
     ectx.fillRect(0,0,w,h);
-
-    // subtle pixel "ground" strip
     const groundY = Math.floor(h*0.70);
     ectx.fillStyle="#ffffff";
     ectx.fillRect(0, groundY, w, h-groundY);
 
-    // light grid for pixel vibe
     ectx.strokeStyle="rgba(10,10,20,0.04)";
     ectx.lineWidth=1;
     const spacing=48;
@@ -2597,7 +2755,6 @@ Ready for the final search, CUPID?`;
       ectx.beginPath(); ectx.moveTo(x,0); ectx.lineTo(x,h); ectx.stroke();
     }
 
-    // minecraft-ish trees (static, NO glitch)
     function block(x,y,s,fill,shade){
       ectx.fillStyle=fill;
       ectx.fillRect(x,y,s,s);
@@ -2606,25 +2763,12 @@ Ready for the final search, CUPID?`;
     }
     function tree(tx, ty, scale){
       const s=scale;
-      // trunk
-      for(let i=0;i<4;i++){
-        block(tx, ty - i*s, s, "#8b5a2b", "rgba(255,255,255,0.10)");
-      }
-      // leaves (cube)
-      const leaf="#2f8f4e";
+      for(let i=0;i<4;i++) block(tx, ty - i*s, s, "#8b5a2b", "rgba(255,255,255,0.10)");
       for(let r=-2;r<=2;r++){
         for(let c=-2;c<=2;c++){
           if(Math.abs(r)+Math.abs(c) > 4) continue;
-          block(tx + c*s, ty - 4*s + r*s, s, leaf, "rgba(255,255,255,0.10)");
+          block(tx + c*s, ty - 4*s + r*s, s, "#2f8f4e", "rgba(255,255,255,0.10)");
         }
-      }
-      // pink flowers pixels
-      const pink="#ff4fb3";
-      for(let i=0;i<6;i++){
-        const fx = tx + (-3 + ((i*7)%7))*s*0.35;
-        const fy = ty + (8 + ((i*11)%9))*s*0.25;
-        ectx.fillStyle=pink;
-        ectx.fillRect((fx|0), (fy|0), (s*0.35)|0, (s*0.35)|0);
       }
     }
 
@@ -2636,21 +2780,30 @@ Ready for the final search, CUPID?`;
   }
 
   function meadowTreeCenterX(w){
-    const innerLeftTreeX = w*0.32;
-    const innerRightTreeX = w*0.68;
-    return (innerLeftTreeX + innerRightTreeX) * 0.5;
+    return (w*0.32 + w*0.68) * 0.5;
+  }
+
+  function resetFinalOverlays(){
+    [valOverlay, inviteOverlay, creditsOverlay].forEach(el=>{
+      el.classList.remove("show");
+      el.setAttribute("aria-hidden", "true");
+    });
+    endingTitle.style.display = "none";
+    endingCanvas.style.cursor = "default";
   }
 
   function startEndingCutscenes(){
     startAudioOnce();
     setMusicVolume("ending");
     rampHumTo(audioOn ? 0.03 : 0.0001, 0.8);
+    resetFinalOverlays();
+
+    if(ending.celebrationTimer) clearTimeout(ending.celebrationTimer);
+    if(ending.inviteTimer) clearTimeout(ending.inviteTimer);
 
     ending.mode="on";
     ending.phase="approachGate";
     ending.t0=performance.now();
-    ending.fade=0;
-    ending.clickArmed=false;
 
     const w=endingCanvas.width, h=endingCanvas.height;
     const midY = h*0.55;
@@ -2667,88 +2820,196 @@ Ready for the final search, CUPID?`;
     ending.gate.y = midY;
     ending.gate.openAmt = 0;
 
-    ending.bubbleText="";
-    ending.showBubbleFrom=null;
-
     ending.lines = [
-      {from:"pink", text:"Finally made it…"},
-      {from:"blue", text:"I missed you so much… I’ve been waiting on you for so long."},
-      {from:"pink", text:"I tried my best to be here as soon as possible."},
-      {from:"blue", text:"I’m just glad you’re finally here."},
-      {from:"blue", text:"Here’s the final heart I’ve been meaning to give to you."},
+      {from:"pink", text:"I thought I’d never make it…"},
+      {from:"blue", text:"Me too… Every day felt longer without you here."},
+      {from:"pink", text:"You’re… here."},
+      {from:"blue", text:"But you did. You’re finally back."},
+      {from:"pink", text:"It’s been too long. I’ve missed this."},
+      {from:"pink", text:"I would’ve made it back sooner… but those ghosts took my hearts and my memories right at the gate."},
+      {from:"blue", text:"Did you get them all back?"},
+      {from:"pink", text:"Yeah… I did."},
+      {from:"pink", text:"But it still feels incomplete."},
+      {from:"pink", text:"Like I’m missing something."},
+      {from:"blue", text:"Hmm… maybe that’s because I’ve been holding onto the last piece."},
+      {from:"pink", text:"The last piece?"},
+      {action:"spawnHeart"},
+      {from:"blue", text:"I was waiting to give it to you."},
+      {from:"pink", text:"Another heart?"},
+      {from:"pink", text:"…What’s in it?"}
     ];
-    ending.lineIndex=0;
+
+    ending.lineIndex=-1;
+    ending.showBubbleFrom=null;
+    ending.bubbleText="";
+    ending.nextLineAt=0;
 
     ending.heart.active=false;
+    ending.heart.hover=false;
+    ending.heart.clickable=false;
     ending.heart.pulse=0;
 
     fadeTo(()=>{ showLayer(endingLayer); });
   }
 
-  function currentEndingLine(){
-    return ending.lines[ending.lineIndex] || null;
-  }
-
-  function advanceEndingDialogue(){
-    // only used in "meetDialogue" phase
+  function advanceEndingDialogueAuto(now){
     ending.lineIndex++;
-    const ln = currentEndingLine();
-    if(!ln){
-      // spawn heart
-      ending.phase="heartGift";
-      ending.t0=performance.now();
-      ending.bubbleText="";
-      ending.showBubbleFrom=null;
-      ending.heart.active=true;
+    const line = ending.lines[ending.lineIndex];
+    if(!line){
+      ending.phase = "heartAwaitClick";
+      ending.bubbleText = "";
+      ending.showBubbleFrom = null;
+      ending.heart.clickable = true;
+      return;
+    }
 
-      // spawn at blue mouth
-      ending.heart.x = ending.blue.x + Math.cos(Math.PI)*8;
+    if(line.action === "spawnHeart"){
+      ending.heart.active = true;
+      ending.heart.clickable = false;
+      ending.heart.pulse = 0;
+      ending.heart.x = ending.blue.x - 10;
       ending.heart.y = ending.blue.y - 4;
-      ending.heart.r = 18;
+      ending.bubbleText = "";
+      ending.showBubbleFrom = null;
+      ending.nextLineAt = now + 850;
       return;
     }
-    ending.showBubbleFrom = ln.from;
-    ending.bubbleText = ln.text;
+
+    ending.showBubbleFrom = line.from;
+    ending.bubbleText = line.text;
+    const delay = Math.max(1900, Math.min(3400, 950 + line.text.length * 28));
+    ending.nextLineAt = now + delay;
   }
 
-  // Click-to-advance for slow pacing
-  function onEndingClick(){
-    if(ending.mode!=="on") return;
-
-    if(ending.phase==="meetDialogue"){
-      advanceEndingDialogue();
-      return;
-    }
-
-    if(ending.phase==="pauseAfterGateEnter"){
-      ending.phase="fadeToMeadow";
-      ending.t0=performance.now();
-      return;
-    }
-
-    // heart click handled in mouse move/click
+  function showValentineModal(){
+    ending.phase = "valentineModal";
+    valOverlay.style.display = "grid";
+    requestAnimationFrame(()=> valOverlay.classList.add("show"));
+    valOverlay.setAttribute("aria-hidden", "false");
   }
-  endingCanvas.addEventListener("click", onEndingClick);
 
-  // Heart hover/click
-  endingCanvas.addEventListener("mousemove",(e)=>{
-    if(ending.mode!=="on" || !ending.heart.active) return;
-    const rect = endingCanvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) * (endingCanvas.width / rect.width);
-    const my = (e.clientY - rect.top) * (endingCanvas.height / rect.height);
-    ending.heart.hover = (Math.hypot(mx-ending.heart.x, my-ending.heart.y) <= ending.heart.r*0.95);
-    endingCanvas.style.cursor = ending.heart.hover ? "pointer" : "default";
+  function clampNoButtonPosition(left, top){
+    const wrap = valBtnWrap.getBoundingClientRect();
+    const btn = noValBtn.getBoundingClientRect();
+    const min = 8;
+    const maxLeft = Math.max(min, wrap.width - btn.width - min);
+    const maxTop = Math.max(min, wrap.height - btn.height - min);
+    return {
+      left: clamp(left, min, maxLeft),
+      top: clamp(top, min, maxTop)
+    };
+  }
+
+  function dodgeNoButton(){
+    const wrap = valBtnWrap.getBoundingClientRect();
+    const btn = noValBtn.getBoundingClientRect();
+    const targetLeft = Math.random() * Math.max(14, wrap.width - btn.width - 14);
+    const targetTop = Math.random() * Math.max(14, wrap.height - btn.height - 14);
+    const pos = clampNoButtonPosition(targetLeft, targetTop);
+    noValBtn.style.left = `${pos.left}px`;
+    noValBtn.style.top = `${pos.top}px`;
+    noValBtn.style.transform = "scale(1.06)";
+    setTimeout(()=>{ noValBtn.style.transform = "scale(1)"; }, 140);
+  }
+
+  function startCelebration(){
+    valOverlay.classList.remove("show");
+    setTimeout(()=>{
+      valOverlay.style.display = "none";
+      valOverlay.setAttribute("aria-hidden", "true");
+    }, 420);
+
+    ending.phase = "celebration";
+    ending.t0 = performance.now();
+    ending.heart.active = false;
+    ending.heart.clickable = false;
+
+    endingTitle.style.display = "block";
+    startConfetti();
+    ending.celebrationTimer = setTimeout(()=>{
+      confettiRunning=false;
+      confettiCanvas.style.display="none";
+      cctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+    }, 5000);
+
+    ending.inviteTimer = setTimeout(()=>{ showInvitation(); }, 2000);
+  }
+
+  function showInvitation(){
+    inviteBody.textContent = `🍷✨ Let’s go back to where it all began… ✨🌹
+
+📍 YOGU Restaurant
+🗓 15 February 2025
+⏰ 7:00 PM
+🕯️ Table for Two
+🌟 Guest of Honor: My Love
+
+📋 Criteria:
+• Show up
+• Look pretty as usual
+• Bring an appetite
+
+💖 I can’t wait to take you back to our first-date spot.`;
+    inviteOverlay.style.display = "grid";
+    requestAnimationFrame(()=>inviteOverlay.classList.add("show"));
+    inviteOverlay.setAttribute("aria-hidden", "false");
+  }
+
+  function showCredits(){
+    inviteOverlay.classList.remove("show");
+    setTimeout(()=>{
+      inviteOverlay.style.display = "none";
+      inviteOverlay.setAttribute("aria-hidden", "true");
+    }, 350);
+
+    creditsInner.innerHTML = `
+      <h3 style="margin:0 0 10px">Why this game matters</h3>
+      <p>Ghosts represent negative emotions, self-doubt, and stress that steal good memories.</p>
+      <p>The maze represents the messy journey of remembering what matters most.</p>
+      <p>Hearts and memories represent rebuilding love and meaning one piece at a time.</p>
+      <p>The final heart represents commitment and choosing each other, fully and intentionally.</p>
+      <p style="margin-top:26px; font-weight:1000">Made with love, for you.</p>
+    `;
+
+    creditsOverlay.style.display = "grid";
+    requestAnimationFrame(()=>creditsOverlay.classList.add("show"));
+    creditsOverlay.setAttribute("aria-hidden", "false");
+    ending.phase = "credits";
+  }
+
+  yesValBtn.addEventListener("click", startCelebration);
+  noValBtn.addEventListener("mouseenter", dodgeNoButton);
+  noValBtn.addEventListener("pointerdown", (e)=>{ e.preventDefault(); dodgeNoButton(); });
+  valCard.addEventListener("pointermove", (e)=>{
+    const b = noValBtn.getBoundingClientRect();
+    const near = Math.hypot(e.clientX - (b.left+b.width/2), e.clientY - (b.top+b.height/2));
+    if(near < 95) dodgeNoButton();
   });
-  endingCanvas.addEventListener("click",(e)=>{
-    if(ending.mode!=="on" || !ending.heart.active) return;
+
+  inviteContinueBtn.addEventListener("click", showCredits);
+  restartBtn.addEventListener("click", ()=> location.reload());
+  mainMenuBtn.addEventListener("click", ()=>{
+    setProgress(Progress.MISSION_SHOWN);
+    location.reload();
+  });
+
+  function updateHeartPointer(e){
+    if(ending.mode!=="on" || !ending.heart.active) return false;
     const rect = endingCanvas.getBoundingClientRect();
     const mx = (e.clientX - rect.left) * (endingCanvas.width / rect.width);
     const my = (e.clientY - rect.top) * (endingCanvas.height / rect.height);
-    if(Math.hypot(mx-ending.heart.x, my-ending.heart.y) <= ending.heart.r*0.95){
-      ending.heart.active=false;
-      endingCanvas.style.cursor="default";
-      showSecretLetter();
-    }
+    ending.heart.hover = (Math.hypot(mx-ending.heart.x, my-ending.heart.y) <= ending.heart.r*1.05);
+    endingCanvas.style.cursor = ending.heart.hover ? "pointer" : "default";
+    return ending.heart.hover;
+  }
+
+  endingCanvas.addEventListener("pointermove", updateHeartPointer);
+  endingCanvas.addEventListener("pointerdown", (e)=>{
+    if(!updateHeartPointer(e) || !ending.heart.clickable) return;
+    playHeartUnlockSfx();
+    ending.heart.active=false;
+    endingCanvas.style.cursor="default";
+    showValentineModal();
   });
 
   function drawEndingFrame(now){
@@ -2758,256 +3019,126 @@ Ready for the final search, CUPID?`;
     }
     const w=endingCanvas.width, h=endingCanvas.height;
 
-    // Phase A: return to the gate scene (dark grid vibe like intro)
     if(ending.phase==="approachGate" || ending.phase==="gateOpen" || ending.phase==="enterGate" || ending.phase==="pauseAfterGateEnter" || ending.phase==="fadeToMeadow"){
-      // background like intro (gate world)
       ectx.fillStyle="#05050a";
       ectx.fillRect(0,0,w,h);
       ectx.strokeStyle="rgba(27,66,255,0.12)";
       ectx.lineWidth=2;
-      const spacing=48;
-      for(let y=spacing; y<h; y+=spacing){
-        ectx.beginPath(); ectx.moveTo(0,y); ectx.lineTo(w,y); ectx.stroke();
-      }
-      for(let x=spacing; x<w; x+=spacing){
-        ectx.beginPath(); ectx.moveTo(x,0); ectx.lineTo(x,h); ectx.stroke();
-      }
+      for(let y=48; y<h; y+=48){ ectx.beginPath(); ectx.moveTo(0,y); ectx.lineTo(w,y); ectx.stroke(); }
+      for(let x=48; x<w; x+=48){ ectx.beginPath(); ectx.moveTo(x,0); ectx.lineTo(x,h); ectx.stroke(); }
 
       const midY = h*0.55;
       ending.pink.y = midY;
       ending.gate.y = midY;
 
-      // slow approach to gate
       if(ending.phase==="approachGate"){
-        const dur = 4.6; // slower
-        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
+        const t = clamp((now-ending.t0)/1000 / 4.6, 0, 1);
         ending.pink.x = lerp(-120, ending.gate.x - 52, easeInOut(t));
-        ending.pink.facing = 0;
-
-        // gate message on gate (NOT character)
         drawGateCard(ectx, ending.gate.x, ending.gate.y, "YOU MAY", "ENTER", 0, 0);
-
-        // character
         drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
-
-        if(t>=1){
-          ending.phase="gateOpen";
-          ending.t0=now;
-        }
-        requestAnimationFrame(drawEndingFrame);
-        return;
+        if(t>=1){ ending.phase="gateOpen"; ending.t0=now; }
+        requestAnimationFrame(drawEndingFrame); return;
       }
 
       if(ending.phase==="gateOpen"){
-        // door opening slowly
-        const dur=1.8;
-        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
+        const t = clamp((now-ending.t0)/1000 / 1.8, 0, 1);
         ending.gate.openAmt = easeInOut(t);
-
         drawGateCard(ectx, ending.gate.x, ending.gate.y, "YOU MAY", "ENTER", 0, ending.gate.openAmt);
         drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
-
-        if(t>=1){
-          ending.phase="enterGate";
-          ending.t0=now;
-        }
-        requestAnimationFrame(drawEndingFrame);
-        return;
+        if(t>=1){ ending.phase="enterGate"; ending.t0=now; }
+        requestAnimationFrame(drawEndingFrame); return;
       }
 
       if(ending.phase==="enterGate"){
-        // character walks into gate (slow), then fade to black
-        const dur=2.6;
-        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
-
-        const startX = ending.gate.x - 52;
-        const endX = ending.gate.x + 6;
-        ending.pink.x = lerp(startX, endX, easeInOut(t));
-
+        const t = clamp((now-ending.t0)/1000 / 2.6, 0, 1);
+        ending.pink.x = lerp(ending.gate.x - 52, ending.gate.x + 6, easeInOut(t));
         drawGateCard(ectx, ending.gate.x, ending.gate.y, "YOU MAY", "ENTER", 0, 1);
         drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
-
-        // fade to black at end
-        const fadeT = clamp((t-0.65)/0.35, 0, 1);
-        ectx.fillStyle=`rgba(0,0,0,${fadeT})`;
+        ectx.fillStyle=`rgba(0,0,0,${clamp((t-0.65)/0.35, 0, 1)})`;
         ectx.fillRect(0,0,w,h);
-
-        if(t>=1){
-          ending.phase="pauseAfterGateEnter";
-          ending.t0=now;
-        }
-        requestAnimationFrame(drawEndingFrame);
-        return;
+        if(t>=1){ ending.phase="pauseAfterGateEnter"; ending.t0=now; }
+        requestAnimationFrame(drawEndingFrame); return;
       }
 
       if(ending.phase==="pauseAfterGateEnter"){
-        // hold black (wait for click OR auto after 1.2s)
         ectx.fillStyle="#000";
         ectx.fillRect(0,0,w,h);
-
-        const t = (now-ending.t0)/1000;
-        if(t>1.2){
-          ending.phase="fadeToMeadow";
-          ending.t0=now;
-        }
-        requestAnimationFrame(drawEndingFrame);
-        return;
+        if((now-ending.t0)/1000 > 1.2){ ending.phase="fadeToMeadow"; ending.t0=now; }
+        requestAnimationFrame(drawEndingFrame); return;
       }
 
       if(ending.phase==="fadeToMeadow"){
-        // fade from black to meadow
-        const dur=1.2;
-        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
-
+        const t = clamp((now-ending.t0)/1000 / 1.2, 0, 1);
         drawMeadowBackground(w,h);
-
-        // dark overlay fades out
         ectx.fillStyle=`rgba(0,0,0,${1-easeOut(t)})`;
         ectx.fillRect(0,0,w,h);
-
         if(t>=1){
           ending.phase="meadowWalk";
           ending.t0=now;
-
-          // position gate on left as "exit"
           ending.gate.x = w*0.22;
           ending.gate.y = h*0.55;
           ending.gate.openAmt = 1;
-
-          // pink starts just outside the gate
           ending.pink.x = ending.gate.x + 8;
           ending.pink.y = ending.gate.y;
-          ending.pink.facing = 0;
-
-          // blue off-screen right
           ending.blue.x = w + 140;
           ending.blue.y = ending.gate.y;
-          ending.blue.facing = Math.PI;
-
-          // first line shown, but click-to-advance later
-          ending.showBubbleFrom = "pink";
-          ending.bubbleText = "Finally made it…";
         }
-
-        requestAnimationFrame(drawEndingFrame);
-        return;
+        requestAnimationFrame(drawEndingFrame); return;
       }
     }
 
-    // Phase B: meadow scene + meet + heart
-    if(ending.phase==="meadowWalk" || ending.phase==="meetApproach" || ending.phase==="meetDialogue" || ending.phase==="heartGift"){
+    if(["meadowWalk","meetApproach","meetDialogueAuto","heartAwaitClick","valentineModal","celebration","credits"].includes(ending.phase)){
       drawMeadowBackground(w,h);
-
-      // draw the exit gate on left (open)
       drawGateCard(ectx, ending.gate.x, ending.gate.y, "", "", 0, 1);
 
-      // pink walks a bit forward slowly, then stops
       if(ending.phase==="meadowWalk"){
-        const dur=2.4;
-        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
-        const meetCenterX = meadowTreeCenterX(w);
-        const meetGap = 42;
-        const pinkMeetX = meetCenterX - meetGap/2;
+        const t = clamp((now-ending.t0)/1000 / 2.4, 0, 1);
+        const pinkMeetX = meadowTreeCenterX(w) - 21;
         ending.pink.x = lerp(ending.gate.x + 8, pinkMeetX, easeInOut(t));
-        ending.pink.facing = 0;
-
-        // keep bubble on pink
         drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
-        drawDioPac(ectx, ending.blue.x, ending.blue.y, now, Math.PI, "#3aa0ff", 18); // hidden off-screen but harmless
-
-        drawSpeechBubble(ectx, ending.pink.x, ending.pink.y, "Finally made it…");
-
-        if(t>=1){
-          ending.phase="meetApproach";
-          ending.t0=now;
-          ending.bubbleText="";
-          ending.showBubbleFrom=null;
-        }
-        requestAnimationFrame(drawEndingFrame);
-        return;
+        if(t>=1){ ending.phase="meetApproach"; ending.t0=now; }
+        requestAnimationFrame(drawEndingFrame); return;
       }
 
       if(ending.phase==="meetApproach"){
-        // blue approaches SLOW
-        const meetCenterX = meadowTreeCenterX(w);
-        const meetGap = 42;
-        const meetX = meetCenterX + meetGap/2;
-        const dur=4.8;
-        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
-        ending.blue.x = lerp(w+140, meetX, easeInOut(t));
-        ending.blue.facing = Math.PI;
-
-        // pink holds
-        ending.pink.facing = 0;
-
+        const t = clamp((now-ending.t0)/1000 / 4.6, 0, 1);
+        ending.blue.x = lerp(w+140, meadowTreeCenterX(w) + 21, easeInOut(t));
         drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
         drawDioPac(ectx, ending.blue.x, ending.blue.y, now, Math.PI, "#3aa0ff", 18);
-
         if(t>=1){
-          // start dialogue (click-to-advance, very slow)
-          ending.phase="meetDialogue";
+          ending.phase="meetDialogueAuto";
           ending.t0=now;
-          ending.lineIndex=0;
-          const ln = currentEndingLine();
-          ending.showBubbleFrom = ln.from;
-          ending.bubbleText = ln.text;
+          ending.lineIndex=-1;
+          advanceEndingDialogueAuto(now);
         }
-        requestAnimationFrame(drawEndingFrame);
-        return;
+        requestAnimationFrame(drawEndingFrame); return;
       }
 
-      if(ending.phase==="meetDialogue"){
-        // draw both
-        drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
-        drawDioPac(ectx, ending.blue.x, ending.blue.y, now, Math.PI, "#3aa0ff", 18);
+      const bounce = (ending.phase==="celebration" || ending.phase==="credits") ? Math.sin(now*0.012)*8 : 0;
+      drawDioPac(ectx, ending.pink.x, ending.pink.y + bounce, now, 0, "#ff4fb3", 18);
+      drawDioPac(ectx, ending.blue.x, ending.blue.y + bounce, now, Math.PI, "#3aa0ff", 18);
 
-        // show bubble from speaker
+      if(ending.phase==="meetDialogueAuto"){
         if(ending.bubbleText){
-          const who = ending.showBubbleFrom;
-          const bx = (who==="blue") ? ending.blue.x : ending.pink.x;
-          const by = (who==="blue") ? ending.blue.y : ending.pink.y;
+          const bx = ending.showBubbleFrom==="blue" ? ending.blue.x : ending.pink.x;
+          const by = ending.showBubbleFrom==="blue" ? ending.blue.y : ending.pink.y;
           drawSpeechBubble(ectx, bx, by, ending.bubbleText);
-
-          // small hint
-          ectx.save();
-          ectx.fillStyle="rgba(15,16,34,0.78)";
-          ectx.strokeStyle="rgba(255,255,255,0.14)";
-          ectx.lineWidth=1.5;
-          roundRect(ectx, w*0.5-140, h*0.12, 280, 34, 12);
-          ectx.fill(); ectx.stroke();
-          ectx.fillStyle="rgba(255,255,255,0.85)";
-          ectx.font="900 13px system-ui";
-          ectx.textAlign="center";
-          ectx.fillText("Click anywhere to continue…", w*0.5, h*0.12+22);
-          ectx.restore();
         }
-        requestAnimationFrame(drawEndingFrame);
-        return;
-      }
 
-      if(ending.phase==="heartGift"){
-        // draw both close
-        drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
-        drawDioPac(ectx, ending.blue.x, ending.blue.y, now, Math.PI, "#3aa0ff", 18);
-
-        // heart floats to top middle between them
         if(ending.heart.active){
-          ending.heart.pulse += 0.06;
+          ending.heart.pulse += 0.05;
           const targetX = (ending.pink.x + ending.blue.x)/2;
-          const targetY = ending.pink.y - 120;
-          const t = clamp((now-ending.t0)/1000 / 1.6, 0, 1);
+          const targetY = ending.pink.y - 120 + Math.sin(now*0.006)*4;
+          ending.heart.x = lerp(ending.heart.x, targetX, 0.06);
+          ending.heart.y = lerp(ending.heart.y, targetY, 0.06);
 
-          // from blue mouth to top center between them
-          const startX = ending.blue.x - 10;
-          const startY = ending.blue.y - 4;
-          ending.heart.x = lerp(startX, targetX, easeOut(t));
-          ending.heart.y = lerp(startY, targetY, easeOut(t));
-
-          // draw heart (clickable)
-          const scale = 1 + 0.06*Math.sin(ending.heart.pulse);
+          const hoverScale = ending.heart.hover ? 1.12 : 1;
+          const pulseScale = 1 + 0.07*Math.sin(ending.heart.pulse);
           ectx.save();
           ectx.translate(ending.heart.x, ending.heart.y);
-          ectx.scale(scale, scale);
+          ectx.scale(pulseScale*hoverScale, pulseScale*hoverScale);
+          ectx.shadowColor="rgba(255,79,179,0.65)";
+          ectx.shadowBlur=18 + (ending.heart.hover ? 12 : 0);
           ectx.beginPath();
           ectx.moveTo(0,6);
           ectx.bezierCurveTo(0,-2,-12,-2,-12,6);
@@ -3015,35 +3146,54 @@ Ready for the final search, CUPID?`;
           ectx.bezierCurveTo(0,18,12,14,12,6);
           ectx.bezierCurveTo(12,-2,0,-2,0,6);
           ectx.closePath();
-          ectx.fillStyle="#ff4fb3";
+          ectx.fillStyle = ending.heart.hover ? "#ff7bc9" : "#ff4fb3";
           ectx.fill();
-
-          if(ending.heart.hover){
-            ectx.shadowColor="rgba(255,79,179,0.7)";
-            ectx.shadowBlur=18;
-            ectx.strokeStyle="rgba(255,255,255,0.75)";
-            ectx.lineWidth=2;
-            ectx.stroke();
-          }
-          ectx.restore();
-
-          // hint label
-          ectx.save();
-          ectx.fillStyle="rgba(15,16,34,0.78)";
-          ectx.strokeStyle="rgba(255,255,255,0.14)";
-          ectx.lineWidth=1.5;
-          roundRect(ectx, w*0.5-170, h*0.12, 340, 34, 12);
-          ectx.fill(); ectx.stroke();
-          ectx.fillStyle="rgba(255,255,255,0.85)";
-          ectx.font="900 13px system-ui";
-          ectx.textAlign="center";
-          ectx.fillText("Click the heart 💗", w*0.5, h*0.12+22);
           ectx.restore();
         }
 
-        requestAnimationFrame(drawEndingFrame);
-        return;
+        if(now >= ending.nextLineAt){
+          advanceEndingDialogueAuto(now + 380);
+        }
       }
+
+      if(ending.phase==="heartAwaitClick"){
+        ending.heart.pulse += 0.06;
+        const targetX = (ending.pink.x + ending.blue.x)/2;
+        const targetY = ending.pink.y - 120 + Math.sin(now*0.006)*4;
+        ending.heart.x = targetX;
+        ending.heart.y = targetY;
+
+        ectx.save();
+        ectx.translate(ending.heart.x, ending.heart.y);
+        const hoverScale = ending.heart.hover ? 1.15 : 1;
+        const pulseScale = 1 + 0.08*Math.sin(ending.heart.pulse);
+        ectx.scale(pulseScale*hoverScale, pulseScale*hoverScale);
+        ectx.shadowColor="rgba(255,79,179,0.75)";
+        ectx.shadowBlur=22;
+        ectx.beginPath();
+        ectx.moveTo(0,6);
+        ectx.bezierCurveTo(0,-2,-12,-2,-12,6);
+        ectx.bezierCurveTo(-12,14,0,18,0,26);
+        ectx.bezierCurveTo(0,18,12,14,12,6);
+        ectx.bezierCurveTo(12,-2,0,-2,0,6);
+        ectx.closePath();
+        ectx.fillStyle="#ff4fb3";
+        ectx.fill();
+        ectx.restore();
+
+        ectx.save();
+        ectx.fillStyle="rgba(15,16,34,0.8)";
+        ectx.strokeStyle="rgba(255,255,255,.2)";
+        roundRect(ectx, w*0.5-164, h*0.10, 328, 40, 13);
+        ectx.fill(); ectx.stroke();
+        ectx.fillStyle="#fff";
+        ectx.font="900 15px system-ui";
+        ectx.textAlign="center";
+        ectx.fillText("CLICK THE HEART", w*0.5, h*0.10 + 25);
+        ectx.restore();
+      }
+
+      requestAnimationFrame(drawEndingFrame); return;
     }
 
     requestAnimationFrame(drawEndingFrame);
