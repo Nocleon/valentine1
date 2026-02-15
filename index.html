@@ -1715,6 +1715,7 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
   const level2Popups = [
     {
       type:"youtube",
+      miniCaption:"A song for you 💗",
       title:"🎵 Eyedress — She Looks Just Like A Dream",
       src:"https://www.youtube.com/embed/XSzMpmmmf9o?si=Wg8kwJ5Ob8e8uZ9W&autoplay=1"
     },
@@ -2263,9 +2264,12 @@ Ready for the final search, CUPID?`;
     const data=level2Popups[idx] || level2Popups[level2Popups.length-1];
 
     if(data.type==="youtube"){
+      const miniCaptionHTML = data.miniCaption
+        ? `<p class="small" style="margin:0 0 8px; text-transform:uppercase; letter-spacing:.08em">${escapeHTML(data.miniCaption)}</p>`
+        : "";
       showModal({
         title:"💗 Found a heart!",
-        bodyHTML:`<p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
+        bodyHTML:`${miniCaptionHTML}<p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
           <div class="ytWrap"><iframe src="${data.src}" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>
           <p class="small" style="margin-top:10px">Click <b>Continue</b> when you’re finished.</p>`,
         doneEnabled:true
