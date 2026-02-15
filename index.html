@@ -608,6 +608,7 @@
 
   const introLayer = document.getElementById("introLayer");
   const missionLayer = document.getElementById("missionLayer");
+  const storyLayer = missionLayer;
   const gameLayer = document.getElementById("gameLayer");
   const endingLayer = document.getElementById("endingLayer");
 
@@ -664,6 +665,10 @@
   function fadeTo(fn){
     fade.classList.add("show");
     setTimeout(()=>{ fn(); setTimeout(()=>fade.classList.remove("show"), 40); }, 650);
+  }
+  function revealStory(){
+    turnOnParticles();
+    setProgress(Progress.MISSION_SHOWN);
   }
 
   // =========================================================
@@ -810,6 +815,7 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
     if(!musicMaster) return;
     if(mode==="intro")   musicMaster.gain.value = audioOn ? 0.16 : 0.00001;
     if(mode==="mission") musicMaster.gain.value = audioOn ? 0.18 : 0.00001;
+    if(mode==="story")   musicMaster.gain.value = audioOn ? 0.18 : 0.00001;
     if(mode==="game")    musicMaster.gain.value = audioOn ? 0.12 : 0.00001;
     if(mode==="ending")  musicMaster.gain.value = audioOn ? 0.14 : 0.00001;
   }
@@ -1148,72 +1154,72 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
 
   const IntroT = {
     dioToCenter: 3.2,
-
-    // Ghost choreography state machine timing
-    ghostsEnter: 2.8,
-    dioPanics: 0.95,
-    attack: 1.4,
-    retreat: 2.6,
-
+    ghostFrontIn: 2.0,
+    ghostBackIn: 2.0,
+    franticLook: 2.2,
+    rushAndHit: 1.2,
+    ouchHold: 1.4,
+    popShow: 3.2,
     fadeOut: 2.6,
-    blackHold: 1.6,
-
-    fadeInToGate: 1.1,
-    walkToGate: 3.0,
-    deniedHold: 3.0,
-
-    reactionLines: [
-      "Ahh, mane…",
-      "They didn’t just hit me…",
-      "They stole my precious memories too.",
-      "Now I gotta go back into that maze and find them."
-    ],
-
-    retreatToLeftStop: 2.2,
-
-    thinkLines: [
-      "..........",
-      "Going back through that maze…",
-      "no map… no clues… just dead ends…",
-      "This could take me years.",
-      "If only some divine being out there could guide me…"
-    ],
-
-    afterHelpLines: [
-      "Who’s voice is that?",
-      "…the Evans?",
-      "I’d heard stories of a Goddest who can locate hearts and memories—",
-      "even when they’re scattered anywhere in the maze world…",
-      "But I never thought I’d be the one to get that kind of divine help.",
-      "I thank you, dear Goddest.",
-      "Lead the way."
-    ],
-
-    finalExitFade: 2.2
+    blackHold: 1.6
   };
 
   const introState = {
     t0: performance.now(),
-    dio: {x:-60, y:0, r:18, facing:0},
-    g1:  {x:0, y:0, r:9, wig:0, shade:0},
-    g2:  {x:0, y:0, r:9, wig:0, shade:1},
+    dio: {x: -60, y: 0, r: 18, facing: 0},
+    gFront: {x: 0, y: 0, r: 18, wig: 0, shade:0},
+    gBack:  {x: 0, y: 0, r: 18, wig: 0, shade:1},
     pops: [],
-    fade: 0,
-    attackFlash: 0,
-
-    choreo: {
-      state: "ghosts_enter",
-      panicFacingLeft: false,
-      nextFlipAt: 0,
-      attackTriggered: false
-    },
-
-    phase: "timeline",
-    phaseStart: 0,
-    afterHelpIndex: 0,
-    afterHelpLineStart: 0
+    flash: 0,
+    fade: 0
   };
 
+  function drawGhost(g, x, y, wiggle, shade=0){
+    const bob=Math.sin(wiggle)*2.2;
+    g.save();
+    g.translate(x,y);
+    g.beginPath();
+    g.arc(0,-4+bob,18,Math.PI,0);
+    g.lineTo(18,18+bob);
+    for(let i=0;i<4;i++){
+      const sx=18 - i*12;
+      g.quadraticCurveTo(sx-6,24+bob,sx-12,18+bob);
+    }
+    g.closePath();
+    g.fillStyle = shade ? "#8f5b24" : "#a86a2a";
+    g.fill();
+
+    g.fillStyle="rgba(255,255,255,.9)";
+    g.beginPath();
+    g.ellipse(-7,-4+bob,5,7,0,0,Math.PI*2);
+    g.ellipse( 7,-4+bob,5,7,0,0,Math.PI*2);
+    g.fill();
+
+    g.fillStyle="rgba(0,0,0,.85)";
+    g.beginPath();
+    g.arc(-7,-4+bob,2.4,0,Math.PI*2);
+    g.arc( 7,-4+bob,2.4,0,Math.PI*2);
+    g.fill();
+    g.restore();
+  }
+
+  function drawDio(g, x, y, t, facingAngle){
+    const mouth=0.45 + 0.10*Math.sin(t*0.02);
+    g.save();
+    g.translate(x,y);
+    g.beginPath();
+    g.moveTo(0,0);
+    g.arc(0,0,18, facingAngle+mouth, facingAngle+(Math.PI*2-mouth));
+    g.closePath();
+    g.fillStyle="#ff4fb3";
+    g.fill();
+    g.beginPath(); g.arc(6,-6,3,0,Math.PI*2);
+    g.fillStyle="rgba(255,255,255,.92)";
+    g.fill();
+    g.restore();
+  }
+
+  // 5 hearts + 5 magnifying glasses
   function spawnPops(dioX, dioY){
     introState.pops = [];
     const heartsCount = 5, glassesCount = 5;
@@ -1259,348 +1265,211 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
     g.restore();
   }
 
+  function drawBackground(w,h){
+    ictx.fillStyle="#05050a";
+    ictx.fillRect(0,0,w,h);
+
+    ictx.strokeStyle="rgba(27,66,255,0.12)";
+    ictx.lineWidth=2;
+    const spacing=48;
+    for(let y=spacing; y<h; y+=spacing){
+      ictx.beginPath(); ictx.moveTo(0,y); ictx.lineTo(w,y); ictx.stroke();
+    }
+    for(let x=spacing; x<w; x+=spacing){
+      ictx.beginPath(); ictx.moveTo(x,0); ictx.lineTo(x,h); ictx.stroke();
+    }
+  }
+
   function runIntroFrame(now){
     const w=introCanvas.width, h=introCanvas.height;
-    drawIntroBackground(w,h);
+    const tSec = (now - introState.t0) / 1000;
+
+    drawBackground(w,h);
 
     const midY = h*0.55;
     const dio = introState.dio;
-    const g1  = introState.g1;
-    const g2  = introState.g2;
+    const front = introState.gFront;
+    const back  = introState.gBack;
+
+    // Timeline
+    const t0 = 0;
+    const t1 = t0 + IntroT.dioToCenter;
+    const t2 = t1 + IntroT.ghostFrontIn;
+    const t3 = t2 + IntroT.ghostBackIn;
+    const t4 = t3 + IntroT.franticLook;
+    const t5 = t4 + IntroT.rushAndHit;
+    const t6 = t5 + IntroT.ouchHold;
+    const t7 = t6 + IntroT.popShow;
+    const t8 = t7 + IntroT.fadeOut;
+    const t9 = t8 + IntroT.blackHold;
+
+    const dioStartX=-60;
+    const dioEndX=w*0.50;
+
+    // Ghost movement landmarks
+    const frontStartX = w + 80;
+    const backStartX  = -80;
+    const frontTargetX = dioEndX + 170;
+    const backTargetX  = dioEndX - 170;
+    const closeFrontX = dioEndX + 48;
+    const closeBackX  = dioEndX - 48;
+    const retreatFrontX = dioEndX + 230;
+    const retreatBackX  = dioEndX - 230;
+    const exitFrontX = w + 120;
+    const exitBackX  = -120;
 
     dio.y = midY;
-    g1.wig += 0.20;
-    g2.wig += 0.20;
+    front.wig += 0.08;
+    back.wig  += 0.08;
 
-    const dioEndX = w*0.50;
-    const gateX = dioEndX + 210;
-    const gateY = midY;
-
+    // defaults
+    let drawFrontGhost = true;
+    let drawBackGhost  = true;
     let bubbleText = "";
-    let showGate=false, showDenied=false, showGateLines=false, gateShake=0;
 
-    // 6 inches from left edge ≈ 576px; clamp for smaller screens
-    const leftStopDesired = 576;
-    const leftStopX = Math.min(leftStopDesired, Math.max(240, w*0.42));
-
-    if(introState.phase === "timeline"){
-      const tSec = (now - introState.t0) / 1000;
-
-      const t0=0;
-      const t1=t0+IntroT.dioToCenter;
-      const choreoTotal = IntroT.ghostsEnter + IntroT.dioPanics + IntroT.attack + IntroT.retreat;
-      const t2=t1+choreoTotal;
-      const t3=t2+IntroT.fadeOut;
-      const t4=t3+IntroT.blackHold;
-
-      const t5=t4+IntroT.fadeInToGate;
-      const t6=t5+IntroT.walkToGate;
-
-      const reactionStarts=[];
-      let reactionTotal=0;
-      for(const line of IntroT.reactionLines){
-        reactionStarts.push(reactionTotal);
-        reactionTotal += lineDuration(line);
-      }
-
-      const t7=t6+IntroT.deniedHold;
-      const t8=t7+reactionTotal;
-      const t9=t8+IntroT.retreatToLeftStop;
-
-      const dioNearGateX = gateX - (18 + dio.r + 2);
-      const dioStartX = -60;
-
-      const g1StartX = w + 90;
-      const g2StartX = -90;
-      const g1StartY = midY - 44;
-      const g2StartY = midY + 44;
-
-      // Keep the ghosts roughly ~2 inches from Dio before the attack.
-      const g1NearX = dioEndX + 192;
-      const g2NearX = dioEndX - 192;
-      const g1NearY = midY - 14;
-      const g2NearY = midY + 14;
-
-      const g1AttackX = dioEndX + 4;
-      const g2AttackX = dioEndX - 4;
-      const g1AttackY = midY - 3;
-      const g2AttackY = midY + 3;
-
-      const g1ExitX = w + 140;
-      const g2ExitX = -140;
-
-      let drawGhosts = true;
-
-      if(tSec < t1){
-        const u = easeInOut(clamp((tSec-t0)/(t1-t0),0,1));
-        dio.x = lerp(dioStartX, dioEndX, u);
-        dio.facing = 0;
-
-        g1.x = g1StartX; g1.y = g1StartY;
-        g2.x = g2StartX; g2.y = g2StartY;
-
-        introState.fade=0;
-        introState.attackFlash = 0;
-      }
-      else if(tSec < t2){
-        dio.x = dioEndX;
-        const local = tSec - t1;
-
-        if(local < IntroT.ghostsEnter){
-          introState.choreo.state = "ghosts_enter";
-          const u = easeInOut(clamp(local/IntroT.ghostsEnter,0,1));
-          g1.x = lerp(g1StartX, g1NearX, u);
-          g1.y = lerp(g1StartY, g1NearY, u);
-          g2.x = lerp(g2StartX, g2NearX, u);
-          g2.y = lerp(g2StartY, g2NearY, u);
-
-          const lookInterval = lerp(540, 170, u);
-          if(introState.choreo.nextFlipAt===0){
-            introState.choreo.nextFlipAt = now + lookInterval;
-            introState.choreo.panicFacingLeft = false;
-          }
-          if(now >= introState.choreo.nextFlipAt){
-            introState.choreo.panicFacingLeft = !introState.choreo.panicFacingLeft;
-            introState.choreo.nextFlipAt = now + lookInterval;
-          }
-          dio.facing = introState.choreo.panicFacingLeft ? Math.PI : 0;
-          introState.attackFlash = 0;
-          introState.choreo.attackTriggered = false;
-        }
-        else if(local < IntroT.ghostsEnter + IntroT.dioPanics){
-          introState.choreo.state = "dio_panics";
-          const panicElapsed = local - IntroT.ghostsEnter;
-          const u = clamp(panicElapsed/IntroT.dioPanics,0,1);
-
-          g1.x = lerp(g1NearX, g1AttackX + 18, easeInOut(u));
-          g1.y = lerp(g1NearY, g1AttackY, easeOut(u));
-          g2.x = lerp(g2NearX, g2AttackX - 18, easeInOut(u));
-          g2.y = lerp(g2NearY, g2AttackY, easeOut(u));
-
-          const flipInterval = lerp(240, 70, u);
-          if(introState.choreo.nextFlipAt===0){
-            introState.choreo.nextFlipAt = now + flipInterval;
-          }
-          if(now >= introState.choreo.nextFlipAt){
-            introState.choreo.panicFacingLeft = !introState.choreo.panicFacingLeft;
-            introState.choreo.nextFlipAt = now + flipInterval;
-          }
-          dio.facing = introState.choreo.panicFacingLeft ? Math.PI : 0;
-          introState.attackFlash = 0;
-        }
-        else if(local < IntroT.ghostsEnter + IntroT.dioPanics + IntroT.attack){
-          introState.choreo.state = "attack";
-          const attackElapsed = local - IntroT.ghostsEnter - IntroT.dioPanics;
-          const u = clamp(attackElapsed/IntroT.attack,0,1);
-
-          g1.x = lerp(g1AttackX + 18, g1AttackX, easeInOut(u));
-          g1.y = lerp(g1AttackY, g1AttackY, u);
-          g2.x = lerp(g2AttackX - 18, g2AttackX, easeInOut(u));
-          g2.y = lerp(g2AttackY, g2AttackY, u);
-          dio.facing = 0;
-
-          if(!introState.choreo.attackTriggered){
-            introState.choreo.attackTriggered = true;
-            spawnPops(dio.x, dio.y);
-            playAttackSfx();
-          }
-          introState.attackFlash = lerp(0.85, 0.15, u);
-        }
-        else {
-          introState.choreo.state = "retreat";
-          const retreatElapsed = local - IntroT.ghostsEnter - IntroT.dioPanics - IntroT.attack;
-          const u = easeInOut(clamp(retreatElapsed/IntroT.retreat,0,1));
-
-          g1.x = lerp(g1AttackX, g1ExitX, u);
-          g1.y = lerp(g1AttackY, midY - 68, easeOut(u));
-          g2.x = lerp(g2AttackX, g2ExitX, u);
-          g2.y = lerp(g2AttackY, midY + 68, easeOut(u));
-          dio.facing = 0;
-          introState.attackFlash = 0;
-
-          for(const p of introState.pops){
-            p.vy += 0.02;
-            p.x += p.vx*0.9;
-            p.y += p.vy*0.9;
-            p.a *= 0.990;
-          }
-        }
-
-        introState.fade = 0;
-      }
-      else if(tSec < t3){
-        introState.choreo.state = "next";
-        dio.x = dioEndX;
-        dio.facing=0;
-
-        const uFade = clamp((tSec-t2)/(t3-t2),0,1);
-        introState.fade = uFade;
-        drawGhosts=false;
-
-        for(const p of introState.pops){
-          p.vy += 0.02;
-          p.x += p.vx*0.8;
-          p.y += p.vy*0.8;
-          p.a *= 0.986;
-        }
-      }
-      else if(tSec < t4){
-        introState.fade = 1;
-        dio.x = dioEndX;
-        drawGhosts=false;
-      }
-      else if(tSec < t5){
-        const u = clamp((tSec-t4)/(t5-t4),0,1);
-        introState.fade = 1-u;
-        dio.x = dioEndX;
-        drawGhosts=false;
-        showGate=true;
-      }
-      else if(tSec < t6){
-        const u = clamp((tSec-t5)/(t6-t5),0,1);
-        introState.fade=0;
-        dio.x = lerp(dioEndX, dioNearGateX, easeInOut(u));
-        drawGhosts=false;
-        showGate=true;
-        if(u<0.55) bubbleText="I better get outta here while I can…";
-      }
-      else if(tSec < t7){
-        introState.fade=0;
-        dio.x = dioNearGateX;
-        drawGhosts=false;
-        showGate=true; showDenied=true;
-
-        const tLocal = tSec - t6;
-        if(tLocal < 0.55) gateShake = Math.sin(tLocal * 42) * 2.2;
-        showGateLines = (tLocal >= 0.55);
-      }
-      else if(tSec < t8){
-        introState.fade=0;
-        dio.x = dioNearGateX;
-        drawGhosts=false;
-        showGate=true; showDenied=true; showGateLines=true;
-
-        const tLocal = tSec - t7;
-        let idx=0;
-        for(let i=0;i<reactionStarts.length;i++){
-          if(tLocal >= reactionStarts[i]) idx=i;
-        }
-        bubbleText = IntroT.reactionLines[idx];
-      }
-      else if(tSec < t9){
-        const u = clamp((tSec-t8)/(t9-t8),0,1);
-        introState.fade=0;
-        dio.facing = Math.PI;
-        dio.x = lerp(dioNearGateX, leftStopX, easeInOut(u));
-        drawGhosts=false;
-        showGate=true; showDenied=true; showGateLines=true;
-      }
-      else{
-        introState.phase="help_wait";
-        introState.phaseStart=now;
-        hideIntroBottom();
-      }
-
-      if(drawGhosts){
-        drawGhostSprite(ictx, g1.x, g1.y, g1.wig, g1.shade, 1.55);
-        drawGhostSprite(ictx, g2.x, g2.y, g2.wig, g2.shade, 1.55);
-      }
+    // ---------------------------------------------------------
+    // Phase 1: approach → hit → retreat → fade out
+    // ---------------------------------------------------------
+    if(tSec < t1){
+      const u = easeInOut(clamp((tSec-t0)/(t1-t0),0,1));
+      dio.x = lerp(dioStartX, dioEndX, u);
+      dio.facing = 0;
+      front.x = frontStartX; front.y = midY - 70;
+      back.x  = backStartX;  back.y  = midY + 70;
+      introState.fade = 0;
     }
-
-    if(introState.phase==="help_wait"){
-      dio.x = leftStopX;
+    else if(tSec < t2){
+      dio.x = dioEndX;
+      const u = easeOut(clamp((tSec-t1)/(t2-t1),0,1));
+      front.x = lerp(frontStartX, frontTargetX, u);
+      front.y = lerp(midY-80, midY-44, u);
+      back.x  = backStartX; back.y = midY + 70;
+      dio.facing = 0;
+      introState.fade = 0;
+    }
+    else if(tSec < t3){
+      dio.x = dioEndX;
+      front.x = frontTargetX; front.y = midY - 44;
+      const u = easeOut(clamp((tSec-t2)/(t3-t2),0,1));
+      back.x = lerp(backStartX, backTargetX, u);
+      back.y = lerp(midY+80, midY+44, u);
       dio.facing = Math.PI;
-      introState.fade=0;
-
-      const elapsed = (now - introState.phaseStart)/1000;
-      let cursor=0, current="";
-      for(const line of IntroT.thinkLines){
-        const dur=lineDuration(line);
-        if(elapsed < cursor+dur){ current=line; break; }
-        cursor+=dur;
-      }
-      if(current){
-        bubbleText=current;
-      } else {
-        showHelpPrompt();
-      }
+      introState.fade = 0;
     }
+    else if(tSec < t4){
+      dio.x = dioEndX;
+      const u = clamp((tSec-t3)/(t4-t3),0,1);
 
-    if(introState.phase==="evans_wait"){
-      dio.x = leftStopX;
-      dio.facing = Math.PI;
-      introState.fade=0;
+      // approach during frantic
+      front.x = lerp(frontTargetX, closeFrontX, easeInOut(u));
+      back.x  = lerp(backTargetX,  closeBackX,  easeInOut(u));
+      front.y = lerp(midY-44, midY-34, easeOut(u));
+      back.y  = lerp(midY+44, midY+34, easeOut(u));
 
-      const elapsed=(now-introState.phaseStart)/1000;
-      const ask="Who’s voice is that?";
-      if(elapsed < lineDuration(ask)){
-        bubbleText=ask;
-      } else {
-        showEvansOption();
-      }
+      // head movement ramps: slower -> faster
+      const freq = 6.0 + 5.0*u;
+      const shake = Math.sin((tSec - t3) * freq);
+      dio.facing = (shake > 0) ? 0 : Math.PI;
+      introState.fade = 0;
     }
+    else if(tSec < t5){
+      dio.x = dioEndX;
+      const u = easeInOut(clamp((tSec-t4)/(t5-t4),0,1));
+      front.x = lerp(closeFrontX, dioEndX + 6, u);
+      back.x  = lerp(closeBackX,  dioEndX - 6, u);
+      front.y = lerp(midY-34, midY-10, u);
+      back.y  = lerp(midY+34, midY+10, u);
 
-    if(introState.phase==="after_help"){
-      dio.x = leftStopX;
-      dio.facing = Math.PI;
-      introState.fade=0;
+      const shake = Math.sin((tSec - t4) * 11.0);
+      dio.facing = (shake > 0) ? 0 : Math.PI;
 
-      const idx=introState.afterHelpIndex;
-      const line=IntroT.afterHelpLines[idx]||"";
-      bubbleText=line;
-
-      const lineElapsed=(now-introState.afterHelpLineStart)/1000;
-      const dur=lineDuration(line);
-
-      if(lineElapsed>=dur){
-        introState.afterHelpIndex++;
-        introState.afterHelpLineStart=now;
-        if(introState.afterHelpIndex >= IntroT.afterHelpLines.length){
-          introState.phase="exit_fade";
-          introState.phaseStart=now;
-        }
+      if(u > 0.92 && introState.flash === 0){
+        introState.flash = 1;
+        spawnPops(dio.x, dio.y);
       }
+      introState.fade = 0;
     }
+    else if(tSec < t6){
+      dio.x = dioEndX;
+      front.x = dioEndX+6; front.y = midY - 10;
+      back.x  = dioEndX-6; back.y  = midY + 10;
+      dio.facing = 0;
 
-    if(introState.phase==="exit_fade"){
-      const u = clamp((now-introState.phaseStart)/(IntroT.finalExitFade*1000),0,1);
-      dio.facing=Math.PI;
-      dio.x = lerp(leftStopX, -160, easeInOut(u));
-      introState.fade = easeInOut(u);
-      if(u>=1){
-        hideIntroBottom();
-        setProgress(Progress.INTRO_DONE);
-        fadeTo(()=>{
-          showLayer(missionLayer);
-          setMusicVolume("mission");
-          turnOnParticles();
-          setProgress(Progress.MISSION_SHOWN);
-        });
-        return;
+      for(const p of introState.pops){
+        p.vy += 0.035;
+        p.x += p.vx*1.4;
+        p.y += p.vy*1.4;
+        p.a *= 0.996;
+        p.s *= 0.999;
       }
+      bubbleText = "Ouch!";
+      introState.fade = 0;
+    }
+    else if(tSec < t7){
+      dio.x = dioEndX;
+      dio.facing = 0;
+
+      const uRetreat = clamp((tSec - t6) / (t7 - t6), 0, 1);
+      front.x = lerp(dioEndX + 60, retreatFrontX, easeOut(uRetreat));
+      back.x  = lerp(dioEndX - 60, retreatBackX,  easeOut(uRetreat));
+      front.y = lerp(midY - 18, midY - 70, easeOut(uRetreat));
+      back.y  = lerp(midY + 18, midY + 70, easeOut(uRetreat));
+
+      for(const p of introState.pops){
+        p.vy += 0.028;
+        p.x += p.vx*1.15;
+        p.y += p.vy*1.15;
+        p.a *= 0.994;
+        p.s *= 0.999;
+      }
+      introState.fade = 0;
+    }
+    else if(tSec < t8){
+      dio.x = dioEndX;
+      dio.facing = 0;
+
+      const uFade = clamp((tSec - t7) / (t8 - t7), 0, 1);
+
+      // ghosts exit screen during fade
+      front.x = lerp(retreatFrontX, exitFrontX, easeInOut(uFade));
+      back.x  = lerp(retreatBackX,  exitBackX,  easeInOut(uFade));
+      front.y = lerp(midY - 70, midY - 90, easeInOut(uFade));
+      back.y  = lerp(midY + 70, midY + 90, easeInOut(uFade));
+
+      for(const p of introState.pops){
+        p.vy += 0.02;
+        p.x += p.vx*0.9;
+        p.y += p.vy*0.9;
+        p.a *= 0.990;
+      }
+
+      introState.fade = uFade;
+    }
+    else if(tSec < t9){
+      // full black hold (ghosts gone)
+      introState.fade = 1;
+      dio.x = dioEndX;
+      dio.facing = 0;
+      drawFrontGhost = false;
+      drawBackGhost = false;
+    }
+    else{
+      // END HERE: intro finished after retreat + black hold
+      setProgress(Progress.INTRO_DONE);
+      fadeTo(() => {
+        showLayer(storyLayer);
+        setMusicVolume("story");
+        revealStory();
+      });
+      return;
     }
 
     // Draw Dio
-    drawDioPac(ictx, dio.x, dio.y, now, dio.facing, "#ff4fb3", 18);
+    drawDio(ictx, dio.x, dio.y, now, dio.facing);
 
-    // Gate
-    if(showGate){
-      if(showDenied){
-        drawGateCard(ictx, gateX, gateY, "ACCESS", "DENIED", gateShake, 0);
-      }else{
-        drawGateCard(ictx, gateX, gateY, "", "", gateShake, 0);
-      }
-
-      if(showGateLines){
-        ictx.save();
-        ictx.fillStyle="rgba(255,255,255,0.78)";
-        ictx.font="800 12px system-ui";
-        ictx.textAlign="center";
-        ictx.fillText("Your heart is incomplete.", gateX, gateY + 54);
-        ictx.fillText("Your memories are missing.", gateX, gateY + 70);
-        ictx.restore();
-      }
-    }
+    // Draw ghosts (only while active)
+    if(drawFrontGhost && front.x > -200 && front.x < w+200) drawGhost(ictx, front.x, front.y, front.wig, 0);
+    if(drawBackGhost  && back.x  > -200 && back.x  < w+200) drawGhost(ictx, back.x,  back.y,  back.wig,  1);
 
     // Pops
     for(const p of introState.pops){
@@ -1608,17 +1477,24 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
       else drawGlass(ictx, p.x, p.y, p.s, p.a);
     }
 
-    // Bubble
-    if(bubbleText) drawSpeechBubble(ictx, dio.x, dio.y, bubbleText);
+    // Impact flash
+    if(introState.flash && tSec < t7){
+      const flashStart = t5 - 0.25;
+      const alpha = Math.max(0, 0.55 - Math.max(0, (tSec-flashStart))*1.4);
+      if(alpha>0){
+        ictx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ictx.fillRect(0,0,w,h);
+      }
+    }
 
-    if(introState.attackFlash>0){
-      ictx.fillStyle = `rgba(0,0,0,${introState.attackFlash})`;
-      ictx.fillRect(0,0,w,h);
+    // Bubble
+    if(bubbleText){
+      drawSpeechBubble(ictx, dio.x, dio.y, bubbleText);
     }
 
     // Fade overlay
     if(introState.fade>0){
-      ictx.fillStyle=`rgba(0,0,0,${introState.fade})`;
+      ictx.fillStyle = `rgba(0,0,0,${introState.fade})`;
       ictx.fillRect(0,0,w,h);
     }
 
