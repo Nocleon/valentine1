@@ -1,0 +1,2917 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Dio’s Memory Keeper</title>
+  <style>
+    :root{
+      --bg:#05050a;
+      --card:#0f1022cc;
+      --card2:#0f1022f2;
+      --ui:#fff;
+      --muted:#b9b9d6;
+      --pink:#ff4fb3;
+      --ghost:#a86a2a;
+      --wall:#1b42ff;
+      --glow:#69ffb7;
+      --danger:#ff4d4d;
+      --ok:#33d17a;
+      --gold:#ffd700;
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    body{
+      margin:0; color:var(--ui);
+      background:radial-gradient(1200px 800px at 50% 20%, #141436 0%, var(--bg) 70%);
+      overflow:hidden;
+    }
+
+    .layer{position:fixed; inset:0; display:none; place-items:center;}
+    .layer.active{display:grid}
+
+    .panel{
+      position:relative;
+      width:min(920px, calc(100vw - 28px));
+      background:var(--card2);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:18px;
+      padding:18px;
+      box-shadow:0 24px 80px rgba(0,0,0,.65);
+      backdrop-filter: blur(6px);
+      overflow:hidden;
+    }
+
+    /* Subtle particle glow behind title */
+    .particles{
+      position:absolute; inset:0;
+      pointer-events:none;
+      opacity:0;
+      transition:opacity 0.7s ease;
+    }
+    .particles.on{opacity:1}
+    #particlesCanvas{width:100%; height:100%; display:block; opacity:.55; filter:blur(.2px);}
+
+    .titleRow{
+      position:relative;
+      display:flex; align-items:center; justify-content:center;
+      gap:10px;
+      padding:10px 12px 6px;
+      margin:2px 0 10px;
+    }
+    .title{
+      font-weight:1000; letter-spacing:.9px;
+      font-size:26px;
+      margin:0;
+      text-align:center;
+      text-transform:uppercase;
+    }
+    .titleGlow{
+      text-shadow:
+        0 0 10px rgba(105,255,183,0.20),
+        0 0 22px rgba(105,255,183,0.10);
+    }
+
+    .boxText{
+      font-size:16px;
+      line-height:1.55;
+      color:#fff;
+      white-space:pre-line;
+      margin:0;
+    }
+    .boxText .muted{color:var(--muted); font-weight:800;}
+    .divider{
+      height:1px; background:rgba(255,255,255,.14);
+      margin:12px 0;
+    }
+
+    .btnRow{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:14px}
+    .btn{
+      border:1px solid rgba(255,255,255,.16);
+      background:#1b1c36;
+      color:#fff;
+      padding:11px 14px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:1000;
+      transition:.15s transform, .25s box-shadow, .15s opacity;
+      user-select:none;
+      display:inline-flex; align-items:center; gap:8px;
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn.primary{
+      background:linear-gradient(135deg, #ff4fb3, #ff2d86);
+      box-shadow:0 0 0 rgba(255,79,179,0);
+    }
+    .btn.primary:hover{box-shadow:0 0 18px rgba(255,79,179,0.28)}
+    .btn.ghost{background:#10112a}
+    .btn.ok{background:linear-gradient(135deg, #2fe17a, #14b85b)}
+    .btn.danger{background:linear-gradient(135deg, #ff5c5c, #ff2b2b)}
+
+    .pill{
+      display:inline-flex; align-items:center; gap:10px;
+      padding:8px 12px; border-radius:999px;
+      background:var(--card); border:1px solid rgba(255,255,255,.12);
+      color:var(--muted); font-weight:900;
+      backdrop-filter: blur(8px);
+      box-shadow:0 12px 30px rgba(0,0,0,.35);
+    }
+    .topBar{
+      position:fixed; top:14px; left:14px; right:14px;
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+      pointer-events:none;
+      z-index:10;
+    }
+    .topBar .pill{pointer-events:auto}
+    .tiny{font-size:12px; color:var(--muted); font-weight:800}
+
+    #introCanvas, #endingCanvas{
+      width:100vw; height:100vh;
+      display:block;
+      background:radial-gradient(1200px 800px at 50% 20%, #141436 0%, #04040a 70%);
+    }
+
+    /* Bottom clickable prompt (intro only) */
+    .intro-bottom{
+      position:fixed;
+      left:0; right:0; bottom:10px;
+      display:none;
+      justify-content:center;
+      z-index:50;
+      pointer-events:none;
+    }
+    .intro-bottom.active{display:flex}
+    .intro-bottom .inner{
+      pointer-events:auto;
+      background:rgba(15,16,34,0.90);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:14px;
+      padding:10px 12px;
+      box-shadow:0 16px 50px rgba(0,0,0,0.6);
+      backdrop-filter: blur(6px);
+      display:flex;
+      gap:10px;
+      align-items:center;
+      max-width:min(960px, calc(100vw - 22px));
+    }
+    .intro-bottom .tag{
+      font-weight:1000;
+      color:var(--muted);
+      font-size:13px;
+      white-space:nowrap;
+    }
+    .intro-bottom button{
+      border:1px solid rgba(255,255,255,.18);
+      background:linear-gradient(135deg, #ff4fb3, #ff2d86);
+      color:#fff;
+      padding:9px 12px;
+      border-radius:12px;
+      font-weight:1000;
+      cursor:pointer;
+    }
+    .intro-bottom button.secondary{ background:#10112a; }
+
+    .fadeOverlay{
+      position:fixed; inset:0;
+      background:#000;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity 0.8s ease;
+      z-index:90;
+    }
+    .fadeOverlay.show{opacity:1}
+
+    #gameWrap{position:fixed; inset:0; display:grid; place-items:center;}
+    #gameCanvas{
+      image-rendering:pixelated;
+      border:2px solid #2a2a5a;
+      border-radius:14px;
+      box-shadow:0 20px 60px rgba(0,0,0,.6);
+      background:#06060f;
+    }
+
+    /* GAME HUD */
+    .hud{
+      position:fixed; top:70px; left:14px; right:14px;
+      display:flex; gap:10px; align-items:center; justify-content:space-between;
+      z-index:10;
+      pointer-events:none;
+      flex-wrap:wrap;
+    }
+    .hud .pill{pointer-events:none}
+    .kbd{
+      position:fixed; bottom:14px; left:14px;
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:14px;
+      padding:10px 12px;
+      color:var(--muted);
+      font-size:13px; line-height:1.35;
+      max-width:min(860px, calc(100vw - 28px));
+      z-index:10;
+      pointer-events:none;
+    }
+    .kbd b{color:#fff}
+
+    /* Modal system (used in game + ending) */
+    .modalOverlay{
+      position:fixed; inset:0; display:none; place-items:center;
+      background:rgba(0,0,0,.62);
+      backdrop-filter: blur(6px);
+      z-index:80;
+    }
+    .modal{
+      width:min(760px, calc(100vw - 28px));
+      max-height:min(86vh, 860px);
+      overflow:auto;
+      background:var(--card2);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:18px;
+      padding:18px 18px 16px;
+      box-shadow:0 24px 80px rgba(0,0,0,.65);
+      position:relative;
+    }
+    .modal h2{margin:0 0 8px; font-size:20px}
+    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-top:14px}
+    .small{font-size:12px; color:var(--muted); font-weight:900}
+    .optionGrid{display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px}
+    @media (min-width:560px){.optionGrid{grid-template-columns:1fr 1fr 1fr}}
+    .optBtn{
+      width:100%;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#0c0d1d;
+      color:#fff;
+      cursor:pointer;
+      font-weight:1000;
+      transition:.15s transform, .15s border-color;
+    }
+    .optBtn:hover{transform:translateY(-1px); border-color:rgba(255,255,255,.26)}
+    .feedback{margin-top:10px; font-weight:1000}
+
+    .ytWrap{width:100%; aspect-ratio:16/9; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.14); background:#000;}
+    .ytWrap iframe{width:100%; height:100%; border:0}
+    .imgBox{
+      width:100%; border-radius:14px; border:1px solid rgba(255,255,255,.14);
+      background:#0c0d1d; overflow:hidden; aspect-ratio:16/9;
+      display:grid; place-items:center; color:var(--muted); font-weight:1000;
+    }
+    .imgBox img{width:100%; height:100%; object-fit:cover}
+
+    /* Congrats overlay (after level 2) */
+    .winOverlay{
+      position:fixed; inset:0;
+      display:none;
+      place-items:center;
+      z-index:75;
+      background:rgba(0,0,0,.45);
+      backdrop-filter: blur(4px);
+    }
+    .winCard{
+      position:relative;
+      width:min(760px, calc(100vw - 28px));
+      border-radius:18px;
+      background:var(--card2);
+      border:1px solid rgba(255,255,255,.14);
+      padding:18px;
+      box-shadow:0 24px 80px rgba(0,0,0,.65);
+      text-align:center;
+    }
+    .winCard h1{ margin:0; font-size:24px; letter-spacing:.2px; }
+    .winCard p{ margin:10px 0 0; color:var(--muted); font-weight:900; line-height:1.4 }
+    .winCard .btnRow{justify-content:center}
+
+    /* Confetti */
+    .confettiFull{position:fixed; inset:0; pointer-events:none; z-index:76; display:none}
+  </style>
+</head>
+<body>
+
+  <div class="topBar">
+    <div class="pill">Progress: <span id="progressText">new</span></div>
+    <div class="pill">
+      <button class="btn ghost" id="resetBtn" style="pointer-events:auto; padding:7px 10px; border-radius:10px;">Reset Progress</button>
+      <button class="btn ghost" id="muteBtn" style="pointer-events:auto; padding:7px 10px; border-radius:10px;">Music: On</button>
+    </div>
+  </div>
+
+  <!-- INTRO -->
+  <div class="layer active" id="introLayer" style="background:#000;">
+    <canvas id="introCanvas"></canvas>
+  </div>
+
+  <!-- INTRO BOTTOM PROMPTS -->
+  <div class="intro-bottom" id="introBottom">
+    <div class="inner">
+      <div class="tag" id="introBottomTag">A whisper…</div>
+      <button id="helpBtn" style="display:none;">i think i can help</button>
+      <button id="evansBtn" class="secondary" style="display:none;">It is I, the Goddest, Evans</button>
+    </div>
+  </div>
+
+  <!-- MISSION PANEL -->
+  <div class="layer" id="missionLayer">
+    <div class="panel">
+      <div class="particles" id="particlesWrap">
+        <canvas id="particlesCanvas"></canvas>
+      </div>
+
+      <div class="titleRow">
+        <h1 class="title titleGlow" id="mkTitle">🗝️ THE MEMORY KEEPER 🗝️</h1>
+      </div>
+
+      <p class="boxText" id="missionText"></p>
+
+      <div class="btnRow">
+        <button class="btn ghost" id="rulesBtn">What am I doing?</button>
+        <button class="btn primary" id="letsGoBtn">Let’s Go →</button>
+      </div>
+
+      <div class="tiny" style="margin-top:10px;">
+        Tip: first click starts audio (browser rules). Music stays faint during gameplay.
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div class="layer" id="gameLayer">
+    <div id="gameWrap">
+      <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div class="hud">
+      <div class="pill">
+        Level: <span id="hudLevel" style="color:#fff">1</span> •
+        Lives: <span id="hudLives" style="color:#fff">3</span>
+      </div>
+      <div class="pill">
+        Collected: <span id="hudCollected" style="color:#fff">0/5</span> •
+        <span id="hudObjective">🔎 Find 5 magnifying glasses</span>
+      </div>
+    </div>
+
+    <div class="kbd">
+      <b>Controls:</b> Arrow Keys / WASD • avoid the ghosts • collect items • reach the gate.
+    </div>
+  </div>
+
+  <!-- ENDING CUTSCENES -->
+  <div class="layer" id="endingLayer" style="background:#000;">
+    <canvas id="endingCanvas"></canvas>
+  </div>
+
+  <div class="fadeOverlay" id="fade"></div>
+
+  <!-- Q/A + content modal -->
+  <div class="modalOverlay" id="modalOverlay">
+    <div class="modal" id="modal">
+      <h2 id="modalTitle">Title</h2>
+      <div id="modalBody"></div>
+      <div class="row">
+        <div class="small" id="modalHint"></div>
+        <button class="btn primary" id="doneBtn">Done ➜</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONGRATS OVERLAY + CONFETTI -->
+  <canvas class="confettiFull" id="confettiCanvas"></canvas>
+  <div class="winOverlay" id="winOverlay">
+    <div class="winCard">
+      <h1 id="winTitle">Congrats 🎉</h1>
+      <p id="winText">You’ve successfully collected all memories and hearts that were once lost.</p>
+      <div class="btnRow" style="margin-top:14px;">
+        <button class="btn primary" id="continueBtn">Continue →</button>
+      </div>
+      <div class="small" style="margin-top:10px;">(Next: the gate will finally open.)</div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // =========================================================
+  // PERSISTENCE (progress + fixed maze seed so it DOESN'T change every time)
+  // =========================================================
+  const KEY = "dioMaze_progress_v3";
+  const SEED_KEY = "dioMaze_seed_v3";     // fixed per user unless Reset Progress
+  const LEVEL_KEY = "dioMaze_level_v3";   // resume level
+  const LIVES_KEY = "dioMaze_lives_v3";
+  const COLLECT_KEY = "dioMaze_collected_v3";
+  const ITEMS_KEY = "dioMaze_items_v3";   // store collected flags
+  const RNGSTEP_KEY = "dioMaze_rngstep_v3"; // keep randomness deterministic across sessions
+
+  const Progress = {
+    NEW: "new",
+    INTRO_DONE: "intro_done",
+    MISSION_SHOWN: "mission_shown",
+    GAME_STARTED: "game_started",
+    ENDING: "ending"
+  };
+
+  const progressText = document.getElementById("progressText");
+  const getProgress = () => localStorage.getItem(KEY) || Progress.NEW;
+  const setProgress = (v) => { localStorage.setItem(KEY, v); progressText.textContent = v; };
+
+  function getOrCreateSeed(){
+    const s = localStorage.getItem(SEED_KEY);
+    if(s && /^\d+$/.test(s)) return Number(s)>>>0;
+    const fresh = (Math.random()*0xFFFFFFFF)>>>0;
+    localStorage.setItem(SEED_KEY, String(fresh));
+    localStorage.setItem(RNGSTEP_KEY, "0");
+    return fresh;
+  }
+  function resetAllPersistent(){
+    [KEY, SEED_KEY, LEVEL_KEY, LIVES_KEY, COLLECT_KEY, ITEMS_KEY, RNGSTEP_KEY].forEach(k=>localStorage.removeItem(k));
+  }
+
+  // =========================================================
+  // DOM
+  // =========================================================
+  const resetBtn = document.getElementById("resetBtn");
+  const muteBtn = document.getElementById("muteBtn");
+
+  const introLayer = document.getElementById("introLayer");
+  const missionLayer = document.getElementById("missionLayer");
+  const gameLayer = document.getElementById("gameLayer");
+  const endingLayer = document.getElementById("endingLayer");
+
+  const fade = document.getElementById("fade");
+  const rulesBtn = document.getElementById("rulesBtn");
+  const letsGoBtn = document.getElementById("letsGoBtn");
+
+  const hudLevel = document.getElementById("hudLevel");
+  const hudLives = document.getElementById("hudLives");
+  const hudCollected = document.getElementById("hudCollected");
+  const hudObjective = document.getElementById("hudObjective");
+
+  // Intro bottom prompts
+  const introBottom = document.getElementById("introBottom");
+  const introBottomTag = document.getElementById("introBottomTag");
+  const helpBtn = document.getElementById("helpBtn");
+  const evansBtn = document.getElementById("evansBtn");
+
+  // Modal
+  const modalOverlay = document.getElementById("modalOverlay");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalBody = document.getElementById("modalBody");
+  const modalHint = document.getElementById("modalHint");
+  const doneBtn = document.getElementById("doneBtn");
+
+  // Congrats overlay + confetti
+  const winOverlay = document.getElementById("winOverlay");
+  const continueBtn = document.getElementById("continueBtn");
+  const confettiCanvas = document.getElementById("confettiCanvas");
+  const cctx = confettiCanvas.getContext("2d");
+
+  function showLayer(layer){
+    [introLayer, missionLayer, gameLayer, endingLayer].forEach(l=>l.classList.remove("active"));
+    layer.classList.add("active");
+  }
+  function fadeTo(fn){
+    fade.classList.add("show");
+    setTimeout(()=>{ fn(); setTimeout(()=>fade.classList.remove("show"), 40); }, 650);
+  }
+
+  // =========================================================
+  // SEEDED RNG (deterministic maze + item placement)
+  // =========================================================
+  function mulberry32(seed){
+    let a = seed>>>0;
+    return function(){
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  const BASE_SEED = getOrCreateSeed();
+  let rngStep = Number(localStorage.getItem(RNGSTEP_KEY) || "0")|0;
+
+  // We keep a deterministic rng per "context", but also store an advancing step
+  // so gameplay randomness doesn't reshuffle the maze next time.
+  function makeRngFor(tag, level){
+    // hash: base seed + tag + level
+    let h = BASE_SEED ^ (level*0x9E3779B9);
+    for(let i=0;i<tag.length;i++){
+      h = (h ^ tag.charCodeAt(i)) * 2654435761;
+      h >>>= 0;
+    }
+    const r = mulberry32(h>>>0);
+    // advance by rngStep to keep consistent between sessions
+    for(let i=0;i<rngStep;i++) r();
+    return r;
+  }
+  function rand01(r){
+    const v = r();
+    rngStep++;
+    localStorage.setItem(RNGSTEP_KEY, String(rngStep));
+    return v;
+  }
+  function randInt(r, a,b){
+    return (a + rand01(r)*(b-a+1))|0;
+  }
+
+  // =========================================================
+  // MISSION PANEL COPY
+  // =========================================================
+  const missionText = document.getElementById("missionText");
+  missionText.innerHTML =
+`His memories have been scattered deep within this maze. Five precious moments, lost and waiting to be found.
+
+You've agreed to help. But memories must be verified before they can be reclaimed —
+<span class="muted">only correct answers unlock the truth.</span>
+
+──────── THE MISSION ────────
+🎮 Navigate using arrow keys
+👻 Avoid the shadow ghosts
+🔍 Find all 5 lost memories
+✅ Answer questions to verify each one
+💚 Collect all 5 to unlock the exit
+
+Then… you’ll enter the gate, and what’s waiting beyond it?
+<span class="muted">Only one way to find out. 💭</span>`;
+
+  // =========================================================
+  // AUDIO (Music + Evans voice fx + Ambient maze hum)
+  // =========================================================
+  let audioOn = true, audioStarted = false;
+  let ac=null;
+
+  // Music nodes
+  let musicMaster=null, musicFilter=null, melodyTimer=null;
+
+  // Ambient hum nodes
+  let humGain=null, humFilter=null, humOsc1=null, humOsc2=null, humNoise=null, humNoiseGain=null;
+
+  // Evans "echo voice" FX chain
+  let evansInGain=null, evansFilter=null, evansDelay=null, evansFB=null, evansOutGain=null;
+
+  function startAudioOnce(){
+    if(audioStarted) return;
+    audioStarted = true;
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+
+    // ---- MUSIC
+    musicMaster = ac.createGain(); musicMaster.gain.value = 0.18;
+    musicFilter = ac.createBiquadFilter(); musicFilter.type="lowpass"; musicFilter.frequency.value=1200;
+    musicFilter.connect(musicMaster).connect(ac.destination);
+
+    const scale=[0,2,4,7,9], base=57;
+    function playNote(midi, dur=0.55, vol=0.22){
+      if(!audioOn) return;
+      const t=ac.currentTime;
+      const o1=ac.createOscillator(); o1.type="sine";
+      o1.frequency.value=440*Math.pow(2,(midi-69)/12);
+      const o2=ac.createOscillator(); o2.type="triangle";
+      o2.frequency.value=o1.frequency.value*2; o2.detune.value=-6;
+      const g=ac.createGain();
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.linearRampToValueAtTime(vol,t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+      o1.connect(g); o2.connect(g); g.connect(musicFilter);
+      o1.start(t); o2.start(t);
+      o1.stop(t+dur+0.02); o2.stop(t+dur+0.02);
+    }
+    let step=0;
+    melodyTimer=setInterval(()=>{
+      const deg=scale[step%scale.length];
+      const midi=base+deg+(step%10===7?12:0);
+      playNote(midi,0.6,0.22);
+      step++;
+    }, 560);
+
+    // ---- HUM
+    humGain = ac.createGain(); humGain.gain.value = 0.0001;
+    humFilter = ac.createBiquadFilter(); humFilter.type="lowpass"; humFilter.frequency.value=420;
+
+    humOsc1 = ac.createOscillator(); humOsc1.type="sine"; humOsc1.frequency.value=52;
+    humOsc2 = ac.createOscillator(); humOsc2.type="triangle"; humOsc2.frequency.value=104; humOsc2.detune.value=-10;
+
+    const noiseBuf = ac.createBuffer(1, ac.sampleRate*2, ac.sampleRate);
+    const data = noiseBuf.getChannelData(0);
+    for(let i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * 0.25;
+    humNoise = ac.createBufferSource(); humNoise.buffer=noiseBuf; humNoise.loop=true;
+    humNoiseGain = ac.createGain(); humNoiseGain.gain.value=0.14;
+
+    const mix = ac.createGain(); mix.gain.value=0.6;
+    humOsc1.connect(mix); humOsc2.connect(mix);
+    humNoise.connect(humNoiseGain).connect(mix);
+    mix.connect(humFilter).connect(humGain).connect(ac.destination);
+
+    humOsc1.start(); humOsc2.start(); humNoise.start();
+
+    // ---- EVANS FX chain
+    evansInGain = ac.createGain(); evansInGain.gain.value=1;
+    evansFilter = ac.createBiquadFilter(); evansFilter.type="bandpass"; evansFilter.frequency.value=900; evansFilter.Q.value=0.7;
+    evansDelay  = ac.createDelay(1.0); evansDelay.delayTime.value=0.22;
+    evansFB     = ac.createGain(); evansFB.gain.value=0.35;
+    evansOutGain= ac.createGain(); evansOutGain.gain.value=0.35;
+
+    evansDelay.connect(evansFB).connect(evansDelay);
+    evansInGain.connect(evansFilter).connect(evansDelay).connect(evansOutGain).connect(ac.destination);
+  }
+
+  function setMusicVolume(mode){
+    if(!musicMaster) return;
+    if(mode==="intro")   musicMaster.gain.value = audioOn ? 0.16 : 0.00001;
+    if(mode==="mission") musicMaster.gain.value = audioOn ? 0.18 : 0.00001;
+    if(mode==="game")    musicMaster.gain.value = audioOn ? 0.12 : 0.00001;
+    if(mode==="ending")  musicMaster.gain.value = audioOn ? 0.14 : 0.00001;
+  }
+
+  function rampHumTo(target, seconds){
+    if(!humGain || !ac) return;
+    const t = ac.currentTime;
+    humGain.gain.cancelScheduledValues(t);
+    humGain.gain.setValueAtTime(humGain.gain.value, t);
+    humGain.gain.linearRampToValueAtTime(target, t + seconds);
+  }
+
+  function evansWhisper(){
+    if(!ac) return;
+    const t = ac.currentTime;
+    const osc = ac.createOscillator();
+    osc.type="sine";
+    osc.frequency.setValueAtTime(520, t);
+    osc.frequency.exponentialRampToValueAtTime(260, t+0.24);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.12, t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+0.32);
+    osc.connect(g).connect(evansInGain);
+    osc.start(t);
+    osc.stop(t+0.34);
+  }
+
+  muteBtn.addEventListener("click",()=>{
+    audioOn=!audioOn;
+    muteBtn.textContent=`Music: ${audioOn?"On":"Off"}`;
+    if(musicMaster) musicMaster.gain.value = audioOn ? musicMaster.gain.value : 0.00001;
+    if(humGain && !audioOn) rampHumTo(0.0001, 0.25);
+  });
+
+  // =========================================================
+  // PARTICLES (Mission title)
+  // =========================================================
+  const particlesWrap = document.getElementById("particlesWrap");
+  const pCanvas = document.getElementById("particlesCanvas");
+  const pctx = pCanvas.getContext("2d");
+  let particles=[], pLast=performance.now();
+
+  function resizeParticles(){
+    const rect = particlesWrap.getBoundingClientRect();
+    pCanvas.width = Math.max(1, Math.floor(rect.width));
+    pCanvas.height= Math.max(1, Math.floor(rect.height));
+  }
+  function spawnParticles(){
+    particles=[];
+    for(let i=0;i<70;i++){
+      particles.push({
+        x: Math.random()*pCanvas.width,
+        y: Math.random()*pCanvas.height,
+        r: 0.8 + Math.random()*2.1,
+        a: 0.15 + Math.random()*0.55,
+        vx: (-0.15 + Math.random()*0.30),
+        vy: (-0.20 + Math.random()*0.35)
+      });
+    }
+  }
+  function particlesLoop(now){
+    const dt = Math.min(0.03,(now-pLast)/1000); pLast=now;
+    if(!particlesWrap.classList.contains("on")){
+      requestAnimationFrame(particlesLoop);
+      return;
+    }
+    pctx.clearRect(0,0,pCanvas.width,pCanvas.height);
+    for(const p of particles){
+      p.x += p.vx*60*dt;
+      p.y += p.vy*60*dt;
+      if(p.x<0) p.x+=pCanvas.width;
+      if(p.x>pCanvas.width) p.x-=pCanvas.width;
+      if(p.y<0) p.y+=pCanvas.height;
+      if(p.y>pCanvas.height) p.y-=pCanvas.height;
+
+      pctx.beginPath();
+      pctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      pctx.fillStyle = `rgba(105,255,183,${p.a})`;
+      pctx.fill();
+    }
+    requestAnimationFrame(particlesLoop);
+  }
+  function turnOnParticles(){
+    particlesWrap.classList.add("on");
+    resizeParticles();
+    spawnParticles();
+  }
+
+  // =========================================================
+  // SHARED DRAW HELPERS (intro + ending + game ghosts)
+  // =========================================================
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  function easeInOut(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+  function easeOut(t){ return 1-Math.pow(1-t,3); }
+
+  function roundRect(g,x,y,w,h,r){
+    const rr=Math.min(r,w/2,h/2);
+    g.beginPath();
+    g.moveTo(x+rr,y);
+    g.arcTo(x+w,y,x+w,y+h,rr);
+    g.arcTo(x+w,y+h,x,y+h,rr);
+    g.arcTo(x,y+h,x,y,rr);
+    g.arcTo(x,y,x+w,y,rr);
+    g.closePath();
+  }
+
+  function drawSpeechBubble(g, x, y, text){
+    const padX=14;
+    g.save();
+    g.font="bold 18px system-ui, -apple-system, Segoe UI, Roboto";
+    const w = g.measureText(text).width + padX*2;
+    const h = 40;
+    const bx = x - w/2;
+    const by = y - 90;
+
+    g.fillStyle="rgba(15,16,34,0.92)";
+    g.strokeStyle="rgba(255,255,255,0.18)";
+    g.lineWidth=2;
+
+    roundRect(g, bx, by, w, h, 14);
+    g.fill(); g.stroke();
+
+    g.beginPath();
+    g.moveTo(x-10, by+h);
+    g.lineTo(x, by+h+14);
+    g.lineTo(x+10, by+h);
+    g.closePath();
+    g.fill(); g.stroke();
+
+    g.fillStyle="#fff";
+    g.fillText(text, bx+padX, by+26);
+    g.restore();
+  }
+
+  function drawGhostSprite(g,x,y,wiggle,shade,scale=1, pupilDx=0, pupilDy=0){
+    const bob=Math.sin(wiggle)*1.6*scale;
+    g.save();
+    g.translate(x,y);
+    g.scale(scale,scale);
+
+    g.beginPath();
+    g.arc(0,-2+bob,10.5,Math.PI,0);
+    g.lineTo(10.5,10+bob);
+    for(let i=0;i<4;i++){
+      const sx=10.5 - i*7;
+      g.quadraticCurveTo(sx-3.5,14+bob,sx-7,10+bob);
+    }
+    g.closePath();
+    g.fillStyle=shade ? "#8f5b24" : "#a86a2a";
+    g.fill();
+
+    g.fillStyle="rgba(255,255,255,.9)";
+    g.beginPath();
+    g.ellipse(-4,-1+bob,3.2,4.2,0,0,Math.PI*2);
+    g.ellipse( 4,-1+bob,3.2,4.2,0,0,Math.PI*2);
+    g.fill();
+
+    g.fillStyle="rgba(0,0,0,.85)";
+    g.beginPath();
+    g.arc(-4 + pupilDx,-1+bob + pupilDy,1.4,0,Math.PI*2);
+    g.arc( 4 + pupilDx,-1+bob + pupilDy,1.4,0,Math.PI*2);
+    g.fill();
+
+    g.restore();
+  }
+
+  function drawDioPac(g, x, y, t, facingAngle, color="#ff4fb3", r=18){
+    const mouth=0.45 + 0.10*Math.sin(t*0.02);
+    g.save();
+    g.translate(x,y);
+    g.beginPath();
+    g.moveTo(0,0);
+    g.arc(0,0,r, facingAngle+mouth, facingAngle+(Math.PI*2-mouth));
+    g.closePath();
+    g.fillStyle=color;
+    g.fill();
+    g.beginPath(); g.arc(6,-6,3,0,Math.PI*2);
+    g.fillStyle="rgba(255,255,255,.92)";
+    g.fill();
+    g.restore();
+  }
+
+  // Gate that matches intro vibe, with text like "ACCESS DENIED" / "YOU MAY ENTER"
+  function drawGateCard(g, x, y, labelTop, labelBottom, shake=0, openAmt=0){
+    g.save();
+    g.translate(x + shake, y);
+
+    // frame
+    g.fillStyle="rgba(27,66,255,0.92)";
+    g.fillRect(-18,-28,36,56);
+
+    // interior
+    g.fillStyle="rgba(0,0,0,0.95)";
+    g.fillRect(-12,-22,24,44);
+
+    // "door" that slides open to the side (simple)
+    if(openAmt < 1){
+      const doorW = 24 * (1-openAmt);
+      g.fillStyle="rgba(15,16,34,0.95)";
+      g.fillRect(-12, -22, doorW, 44);
+      g.fillStyle="rgba(255,255,255,0.10)";
+      g.fillRect(-12+2, -22+2, Math.max(0,doorW-4), 40);
+    }
+
+    if(labelTop || labelBottom){
+      g.fillStyle="#ff4fb3";
+      g.font="900 12px system-ui";
+      g.textAlign="center";
+      if(labelTop) g.fillText(labelTop, 0, -40);
+      if(labelBottom) g.fillText(labelBottom, 0, -24);
+    }
+    g.restore();
+  }
+
+  // =========================================================
+  // INTRO ANIMATION (kept)
+  // =========================================================
+  const introCanvas = document.getElementById("introCanvas");
+  const ictx = introCanvas.getContext("2d");
+  const endingCanvas = document.getElementById("endingCanvas");
+  const ectx = endingCanvas.getContext("2d");
+
+  function resizeFullCanvas(c){
+    c.width=window.innerWidth;
+    c.height=window.innerHeight;
+  }
+  function resizeAll(){
+    resizeFullCanvas(introCanvas);
+    resizeFullCanvas(endingCanvas);
+  }
+
+  window.addEventListener("resize", ()=>{
+    resizeAll();
+    if(missionLayer.classList.contains("active")){
+      resizeParticles();
+      spawnParticles();
+    }
+    fitGame();
+    if(confettiRunning){
+      confettiCanvas.width = window.innerWidth;
+      confettiCanvas.height = window.innerHeight;
+    }
+  });
+  resizeAll();
+
+  function drawIntroBackground(w,h){
+    ictx.fillStyle="#05050a";
+    ictx.fillRect(0,0,w,h);
+
+    ictx.strokeStyle="rgba(27,66,255,0.12)";
+    ictx.lineWidth=2;
+    const spacing=48;
+    for(let y=spacing; y<h; y+=spacing){
+      ictx.beginPath(); ictx.moveTo(0,y); ictx.lineTo(w,y); ictx.stroke();
+    }
+    for(let x=spacing; x<w; x+=spacing){
+      ictx.beginPath(); ictx.moveTo(x,0); ictx.lineTo(x,h); ictx.stroke();
+    }
+  }
+
+  function lineDuration(text){
+    const base = 1.8;
+    const perChar = 0.032;
+    const cap = 3.2;
+    return Math.min(cap, base + text.length * perChar);
+  }
+
+  function hideIntroBottom(){
+    introBottom.classList.remove("active");
+    helpBtn.style.display="none";
+    evansBtn.style.display="none";
+    introBottomTag.textContent="A whisper…";
+  }
+  function showHelpPrompt(){
+    introBottom.classList.add("active");
+    introBottomTag.textContent="A whisper at the bottom of the screen…";
+    helpBtn.style.display="inline-block";
+    evansBtn.style.display="none";
+  }
+  function showEvansOption(){
+    introBottom.classList.add("active");
+    introBottomTag.textContent="Choose a reply…";
+    helpBtn.style.display="none";
+    evansBtn.style.display="inline-block";
+  }
+
+  const IntroT = {
+    dioToCenter: 3.2,
+    ghostFrontIn: 2.0,
+    ghostSecondIn: 2.0,
+    franticLook: 2.2,
+    rushAndHit: 1.2,
+    ouchHold: 1.4,
+    popShow: 3.2,
+    fadeOut: 2.6,
+    blackHold: 1.6,
+
+    fadeInToGate: 1.1,
+    walkToGate: 3.0,
+    deniedHold: 3.0,
+
+    reactionLines: [
+      "Ahh, mane…",
+      "They didn’t just hit me…",
+      "They stole my precious memories too.",
+      "Now I gotta go back into that maze and find them."
+    ],
+
+    retreatToLeftStop: 2.2,
+
+    thinkLines: [
+      "..........",
+      "Going back through that maze…",
+      "no map… no clues… just dead ends…",
+      "This could take me years.",
+      "If only some divine being out there could guide me…"
+    ],
+
+    afterHelpLines: [
+      "Who’s voice is that?",
+      "…the Evans?",
+      "I’d heard stories of a Goddest who can locate hearts and memories—",
+      "even when they’re scattered anywhere in the maze world…",
+      "But I never thought I’d be the one to get that kind of divine help.",
+      "I thank you, dear Goddest.",
+      "Lead the way."
+    ],
+
+    finalExitFade: 2.2
+  };
+
+  const introState = {
+    t0: performance.now(),
+    dio: {x:-60, y:0, r:18, facing:0},
+    g1:  {x:0, y:0, r:9, wig:0, shade:0},
+    g2:  {x:0, y:0, r:9, wig:0, shade:1},
+    pops: [],
+    fade: 0,
+
+    phase: "timeline",
+    phaseStart: 0,
+    afterHelpIndex: 0,
+    afterHelpLineStart: 0
+  };
+
+  function spawnPops(dioX, dioY){
+    introState.pops = [];
+    const heartsCount = 5, glassesCount = 5;
+    const total = heartsCount + glassesCount;
+
+    const spawn = (kind, i) => {
+      const ang = (Math.PI*2) * (i/total) + (Math.random()*0.20);
+      const spd = 2.0 + Math.random()*1.6;
+      introState.pops.push({
+        kind,
+        x: dioX, y: dioY,
+        vx: Math.cos(ang)*spd,
+        vy: Math.sin(ang)*spd - 1.8,
+        a: 1,
+        s: 0.95 + Math.random()*0.10
+      });
+    };
+
+    for(let i=0;i<heartsCount;i++) spawn("heart", i);
+    for(let i=0;i<glassesCount;i++) spawn("glass", heartsCount + i);
+  }
+
+  function drawHeart(g,x,y,s,a){
+    g.save(); g.globalAlpha=a; g.translate(x,y); g.scale(s,s);
+    g.beginPath();
+    g.moveTo(0,6);
+    g.bezierCurveTo(0,-2,-12,-2,-12,6);
+    g.bezierCurveTo(-12,14,0,18,0,26);
+    g.bezierCurveTo(0,18,12,14,12,6);
+    g.bezierCurveTo(12,-2,0,-2,0,6);
+    g.closePath();
+    g.fillStyle="#ff4fb3";
+    g.fill();
+    g.restore();
+  }
+  function drawGlass(g,x,y,s,a){
+    g.save(); g.globalAlpha=a; g.translate(x,y); g.scale(s,s);
+    g.strokeStyle="rgba(255,255,255,0.95)";
+    g.lineWidth=3;
+    g.beginPath(); g.arc(0,0,10,0,Math.PI*2); g.stroke();
+    g.lineWidth=4;
+    g.beginPath(); g.moveTo(8,8); g.lineTo(18,18); g.stroke();
+    g.restore();
+  }
+
+  function runIntroFrame(now){
+    const w=introCanvas.width, h=introCanvas.height;
+    drawIntroBackground(w,h);
+
+    const midY = h*0.55;
+    const dio = introState.dio;
+    const g1  = introState.g1;
+    const g2  = introState.g2;
+
+    dio.y = midY;
+    g1.wig += 0.20;
+    g2.wig += 0.20;
+
+    const dioEndX = w*0.50;
+    const gateX = dioEndX + 210;
+    const gateY = midY;
+
+    let bubbleText = "";
+    let showGate=false, showDenied=false, showGateLines=false, gateShake=0;
+
+    // 6 inches from left edge ≈ 576px; clamp for smaller screens
+    const leftStopDesired = 576;
+    const leftStopX = Math.min(leftStopDesired, Math.max(240, w*0.42));
+
+    if(introState.phase === "timeline"){
+      const tSec = (now - introState.t0) / 1000;
+
+      const t0=0;
+      const t1=t0+IntroT.dioToCenter;
+      const t2=t1+IntroT.ghostFrontIn;
+      const t3=t2+IntroT.ghostSecondIn;
+      const t4=t3+IntroT.franticLook;
+      const t5=t4+IntroT.rushAndHit;
+      const t6=t5+IntroT.ouchHold;
+      const t7=t6+IntroT.popShow;
+      const t8=t7+IntroT.fadeOut;
+      const t9=t8+IntroT.blackHold;
+
+      const t10=t9+IntroT.fadeInToGate;
+      const t11=t10+IntroT.walkToGate;
+
+      const reactionStarts=[];
+      let reactionTotal=0;
+      for(const line of IntroT.reactionLines){
+        reactionStarts.push(reactionTotal);
+        reactionTotal += lineDuration(line);
+      }
+
+      const t12=t11+IntroT.deniedHold;
+      const t13=t12+reactionTotal;
+      const t14=t13+IntroT.retreatToLeftStop;
+
+      // Ghosts BOTH from the FRONT (right side)
+      const g1StartX = w + 90,  g2StartX = w + 170;
+      const g1StartY = midY - 60, g2StartY = midY + 60;
+
+      const g1TargetX = dioEndX + 190, g2TargetX = dioEndX + 260;
+      const g1TargetY = midY - 40,     g2TargetY = midY + 40;
+
+      const g1CloseX = dioEndX + 52,   g2CloseX = dioEndX + 86;
+      const g1CloseY = midY - 18,      g2CloseY = midY + 18;
+
+      const g1RetreatX = dioEndX + 260, g2RetreatX = dioEndX + 320;
+      const g1ExitX = w + 130,          g2ExitX = w + 220;
+
+      const dioNearGateX = gateX - (18 + dio.r + 2);
+      const dioStartX = -60;
+
+      let drawGhosts = true;
+
+      if(tSec < t1){
+        const u = easeInOut(clamp((tSec-t0)/(t1-t0),0,1));
+        dio.x = lerp(dioStartX, dioEndX, u);
+        dio.facing = 0;
+
+        g1.x = g1StartX; g1.y = g1StartY;
+        g2.x = g2StartX; g2.y = g2StartY;
+
+        introState.fade=0;
+      }
+      else if(tSec < t2){
+        dio.x = dioEndX;
+        const u = easeOut(clamp((tSec-t1)/(t2-t1),0,1));
+        g1.x = lerp(g1StartX, g1TargetX, u);
+        g1.y = lerp(g1StartY, g1TargetY, u);
+
+        g2.x = g2StartX; g2.y = g2StartY;
+
+        dio.facing = 0;
+        introState.fade=0;
+      }
+      else if(tSec < t3){
+        dio.x = dioEndX;
+        g1.x = g1TargetX; g1.y = g1TargetY;
+
+        const u = easeOut(clamp((tSec-t2)/(t3-t2),0,1));
+        g2.x = lerp(g2StartX, g2TargetX, u);
+        g2.y = lerp(g2StartY, g2TargetY, u);
+
+        dio.facing=0;
+        introState.fade=0;
+      }
+      else if(tSec < t4){
+        dio.x = dioEndX;
+        const u = clamp((tSec-t3)/(t4-t3),0,1);
+
+        g1.x = lerp(g1TargetX, g1CloseX, easeInOut(u));
+        g2.x = lerp(g2TargetX, g2CloseX, easeInOut(u));
+        g1.y = lerp(g1TargetY, g1CloseY, easeOut(u));
+        g2.y = lerp(g2TargetY, g2CloseY, easeOut(u));
+
+        dio.facing = 0;
+        introState.fade=0;
+      }
+      else if(tSec < t5){
+        dio.x = dioEndX;
+        const u = easeInOut(clamp((tSec-t4)/(t5-t4),0,1));
+
+        // ghosts overlap ON TOP (your ask)
+        g1.x = lerp(g1CloseX, dioEndX + 2, u);
+        g2.x = lerp(g2CloseX, dioEndX + 6, u);
+        g1.y = lerp(g1CloseY, midY - 6, u);
+        g2.y = lerp(g2CloseY, midY + 6, u);
+
+        dio.facing=0;
+
+        if(u > 0.92 && introState.pops.length===0){
+          spawnPops(dio.x, dio.y);
+        }
+        introState.fade=0;
+      }
+      else if(tSec < t6){
+        dio.x = dioEndX;
+        dio.facing=0;
+
+        for(const p of introState.pops){
+          p.vy += 0.035;
+          p.x += p.vx*1.4;
+          p.y += p.vy*1.4;
+          p.a *= 0.996;
+          p.s *= 0.999;
+        }
+        bubbleText="Ouch!";
+        introState.fade=0;
+      }
+      else if(tSec < t7){
+        dio.x = dioEndX;
+        dio.facing=0;
+
+        const uRet = clamp((tSec-t6)/(t7-t6),0,1);
+        g1.x = lerp(dioEndX + 60, g1RetreatX, easeOut(uRet));
+        g2.x = lerp(dioEndX + 70, g2RetreatX, easeOut(uRet));
+        g1.y = lerp(midY - 18, midY - 70, easeOut(uRet));
+        g2.y = lerp(midY + 18, midY + 70, easeOut(uRet));
+
+        for(const p of introState.pops){
+          p.vy += 0.028;
+          p.x += p.vx*1.15;
+          p.y += p.vy*1.15;
+          p.a *= 0.994;
+          p.s *= 0.999;
+        }
+        introState.fade=0;
+      }
+      else if(tSec < t8){
+        dio.x = dioEndX;
+        dio.facing=0;
+
+        const uFade = clamp((tSec-t7)/(t8-t7),0,1);
+        g1.x = lerp(g1RetreatX, g1ExitX, easeInOut(uFade));
+        g2.x = lerp(g2RetreatX, g2ExitX, easeInOut(uFade));
+        g1.y = lerp(midY - 70, midY - 90, easeInOut(uFade));
+        g2.y = lerp(midY + 70, midY + 90, easeInOut(uFade));
+
+        for(const p of introState.pops){
+          p.vy += 0.02;
+          p.x += p.vx*0.9;
+          p.y += p.vy*0.9;
+          p.a *= 0.990;
+        }
+        introState.fade = uFade;
+      }
+      else if(tSec < t9){
+        introState.fade = 1;
+        dio.x = dioEndX;
+        drawGhosts=false;
+      }
+      else if(tSec < t10){
+        const u = clamp((tSec-t9)/(t10-t9),0,1);
+        introState.fade = 1-u;
+        dio.x = dioEndX;
+        drawGhosts=false;
+        showGate=true;
+      }
+      else if(tSec < t11){
+        const u = clamp((tSec-t10)/(t11-t10),0,1);
+        introState.fade=0;
+        dio.x = lerp(dioEndX, dioNearGateX, easeInOut(u));
+        drawGhosts=false;
+        showGate=true;
+        if(u<0.55) bubbleText="I better get outta here while I can…";
+      }
+      else if(tSec < t12){
+        introState.fade=0;
+        dio.x = dioNearGateX;
+        drawGhosts=false;
+        showGate=true; showDenied=true;
+
+        const tLocal = tSec - t11;
+        if(tLocal < 0.55) gateShake = Math.sin(tLocal * 42) * 2.2;
+        showGateLines = (tLocal >= 0.55);
+      }
+      else if(tSec < t13){
+        introState.fade=0;
+        dio.x = dioNearGateX;
+        drawGhosts=false;
+        showGate=true; showDenied=true; showGateLines=true;
+
+        const tLocal = tSec - t12;
+        let idx=0;
+        for(let i=0;i<reactionStarts.length;i++){
+          if(tLocal >= reactionStarts[i]) idx=i;
+        }
+        bubbleText = IntroT.reactionLines[idx];
+      }
+      else if(tSec < t14){
+        const u = clamp((tSec-t13)/(t14-t13),0,1);
+        introState.fade=0;
+        dio.facing = Math.PI;
+        dio.x = lerp(dioNearGateX, leftStopX, easeInOut(u));
+        drawGhosts=false;
+        showGate=true; showDenied=true; showGateLines=true;
+      }
+      else{
+        introState.phase="help_wait";
+        introState.phaseStart=now;
+        hideIntroBottom();
+      }
+
+      if(drawGhosts){
+        drawGhostSprite(ictx, g1.x, g1.y, g1.wig, g1.shade, 1.55);
+        drawGhostSprite(ictx, g2.x, g2.y, g2.wig, g2.shade, 1.55);
+      }
+    }
+
+    if(introState.phase==="help_wait"){
+      dio.x = leftStopX;
+      dio.facing = Math.PI;
+      introState.fade=0;
+
+      const elapsed = (now - introState.phaseStart)/1000;
+      let cursor=0, current="";
+      for(const line of IntroT.thinkLines){
+        const dur=lineDuration(line);
+        if(elapsed < cursor+dur){ current=line; break; }
+        cursor+=dur;
+      }
+      if(current){
+        bubbleText=current;
+      } else {
+        showHelpPrompt();
+      }
+    }
+
+    if(introState.phase==="evans_wait"){
+      dio.x = leftStopX;
+      dio.facing = Math.PI;
+      introState.fade=0;
+
+      const elapsed=(now-introState.phaseStart)/1000;
+      const ask="Who’s voice is that?";
+      if(elapsed < lineDuration(ask)){
+        bubbleText=ask;
+      } else {
+        showEvansOption();
+      }
+    }
+
+    if(introState.phase==="after_help"){
+      dio.x = leftStopX;
+      dio.facing = Math.PI;
+      introState.fade=0;
+
+      const idx=introState.afterHelpIndex;
+      const line=IntroT.afterHelpLines[idx]||"";
+      bubbleText=line;
+
+      const lineElapsed=(now-introState.afterHelpLineStart)/1000;
+      const dur=lineDuration(line);
+
+      if(lineElapsed>=dur){
+        introState.afterHelpIndex++;
+        introState.afterHelpLineStart=now;
+        if(introState.afterHelpIndex >= IntroT.afterHelpLines.length){
+          introState.phase="exit_fade";
+          introState.phaseStart=now;
+        }
+      }
+    }
+
+    if(introState.phase==="exit_fade"){
+      const u = clamp((now-introState.phaseStart)/(IntroT.finalExitFade*1000),0,1);
+      dio.facing=Math.PI;
+      dio.x = lerp(leftStopX, -160, easeInOut(u));
+      introState.fade = easeInOut(u);
+      if(u>=1){
+        hideIntroBottom();
+        setProgress(Progress.INTRO_DONE);
+        fadeTo(()=>{
+          showLayer(missionLayer);
+          setMusicVolume("mission");
+          turnOnParticles();
+          setProgress(Progress.MISSION_SHOWN);
+        });
+        return;
+      }
+    }
+
+    // Draw Dio
+    drawDioPac(ictx, dio.x, dio.y, now, dio.facing, "#ff4fb3", 18);
+
+    // Gate
+    if(showGate){
+      if(showDenied){
+        drawGateCard(ictx, gateX, gateY, "ACCESS", "DENIED", gateShake, 0);
+      }else{
+        drawGateCard(ictx, gateX, gateY, "", "", gateShake, 0);
+      }
+
+      if(showGateLines){
+        ictx.save();
+        ictx.fillStyle="rgba(255,255,255,0.78)";
+        ictx.font="800 12px system-ui";
+        ictx.textAlign="center";
+        ictx.fillText("Your heart is incomplete.", gateX, gateY + 54);
+        ictx.fillText("Your memories are missing.", gateX, gateY + 70);
+        ictx.restore();
+      }
+    }
+
+    // Pops
+    for(const p of introState.pops){
+      if(p.kind==="heart") drawHeart(ictx, p.x, p.y, p.s, p.a);
+      else drawGlass(ictx, p.x, p.y, p.s, p.a);
+    }
+
+    // Bubble
+    if(bubbleText) drawSpeechBubble(ictx, dio.x, dio.y, bubbleText);
+
+    // Fade overlay
+    if(introState.fade>0){
+      ictx.fillStyle=`rgba(0,0,0,${introState.fade})`;
+      ictx.fillRect(0,0,w,h);
+    }
+
+    requestAnimationFrame(runIntroFrame);
+  }
+
+  // Intro interactions
+  helpBtn.addEventListener("click", ()=>{
+    startAudioOnce();
+    setMusicVolume("intro");
+    if(introState.phase !== "help_wait") return;
+    hideIntroBottom();
+    introState.phase="evans_wait";
+    introState.phaseStart=performance.now();
+  });
+  evansBtn.addEventListener("click", ()=>{
+    startAudioOnce();
+    setMusicVolume("intro");
+    evansWhisper();
+    if(introState.phase !== "evans_wait") return;
+    hideIntroBottom();
+    introState.phase="after_help";
+    introState.phaseStart=performance.now();
+    introState.afterHelpIndex=0;
+    introState.afterHelpLineStart=performance.now();
+  });
+
+  // =========================================================
+  // MODAL SYSTEM (game + ending)
+  // =========================================================
+  let paused = false;
+  let modalOnDone = null;
+
+  function escapeHTML(str){
+    return String(str)
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+
+  function showModal({title, bodyHTML, hint="", doneEnabled=true, onDone=null}){
+    paused=true;
+    modalTitle.textContent=title;
+    modalBody.innerHTML=bodyHTML;
+    modalHint.textContent=hint;
+    doneBtn.disabled=!doneEnabled;
+    modalOnDone=onDone;
+    modalOverlay.style.display="grid";
+  }
+  function hideModal(){
+    modalOverlay.style.display="none";
+    paused=false;
+    const iframe=modalBody.querySelector("iframe");
+    if(iframe) iframe.src="about:blank";
+    modalBody.innerHTML="";
+    modalOnDone=null;
+  }
+  doneBtn.addEventListener("click",()=>{
+    if(doneBtn.disabled) return;
+    const cb=modalOnDone;
+    hideModal();
+    if(typeof cb==="function") cb();
+  });
+
+  // =========================================================
+  // GAME: FULL MAZE + QUESTIONS + POPUPS (replaces mock maze)
+  // =========================================================
+  const TOTAL_ITEMS_PER_LEVEL = 5;
+
+  // YOUR 5 MEMORY QUESTIONS (Level 1)
+  const memoryClues = [
+    {
+      title:"🔎 Memory 1/5",
+      q:"When was our first date?",
+      options:["November 2022","December 2022","February 2023"],
+      correct:"December 2022"
+    },
+    {
+      title:"🔎 Memory 2/5",
+      q:"Who was the first person to ask to be in a relationship?",
+      options:["Me","You","Both of us"],
+      correct:"You"
+    },
+    {
+      title:"🔎 Memory 3/5",
+      q:"Before I started calling you “babe,” what did I call you?",
+      options:["Dio","My little dirty girl","Big head"],
+      correct:"Dio"
+    },
+    {
+      title:"🔎 Memory 4/5",
+      q:"What was the second movie we ever watched together at the cinema?",
+      options:["Ant-Man and the Wasp: Quantumania","Oppenheimer","Wonka"],
+      correct:"Ant-Man and the Wasp: Quantumania"
+    },
+    {
+      title:"🔎 Memory 5/5",
+      q:"What was a habit you had in 2023 that I told you I missed?",
+      options:["Sending videos","Using my hands however you like","Making jokes"],
+      correct:"Using my hands however you like"
+    },
+  ];
+
+  // Level 2 popups (5 hearts)
+  // NOTE: Canva share links usually DON'T behave as direct image URLs.
+  // This will try anyway, and if it fails you’ll get a fallback button inside the popup.
+  const PHOTO_URL = "https://www.canva.com/design/DAHBRllzkPg/b9n4aD0vvBwK1TzMGLQTOA/view?utm_content=DAHBRllzkPg&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h3157329721";
+
+  const level2Popups = [
+    { type:"youtube", title:"This song reminds me of you 💗", src:"https://www.youtube.com/embed/KEI4qSrkPAs?autoplay=1" },
+    { type:"image", title:"Us, right here 🥹", src: PHOTO_URL },
+    { type:"letter", title:"A letter from me", text:
+`I just want you to know this:
+I notice the little things. The way you move through life, the way you show up, the way you make ordinary moments feel like they matter.
+
+You’re not a “maybe” to me.
+You’re the kind of person I’d pick on purpose, every time.
+
+Thank you for being you.
+And thank you for letting me be close to you.` },
+    { type:"letter", title:"One more thing I need you to hear", text:
+`You’ve been on my mind in the quiet moments.
+Not in a heavy way…
+in a soft way.
+
+Like: “I’m grateful you exist.”
+Like: “I’m proud of you.”
+Like: “I want you close.”` },
+    { type:"letter", title:"Last one…", text:
+`No matter how far the maze got…
+you were still the destination.` },
+  ];
+
+  const finalSecretLetter =
+`Through the journey of memories and heartfelt moments, I realized something simple:
+
+I want more days with you.
+More laughs. More late talks. More “remember when…”.
+
+Will you be my Valentine? 💗`;
+
+  // =========================
+  // GAME CONFIG
+  // =========================
+  const tileSize = 24;
+  const COLS = 31;
+  const ROWS = 33;
+
+  const playerSpeed = 120;
+  const ghostSpeed  = 112;
+  const fixedDt = 1/120;
+  const maxSubSteps = 5;
+
+  // 1 wall, 0 floor, 3 gate closed, 4 gate open
+  let map = null;
+
+  // =========================
+  // CANVAS / CTX
+  // =========================
+  const gameCanvas=document.getElementById("gameCanvas");
+  const gctx=gameCanvas.getContext("2d",{alpha:false});
+
+  function fitGame(){
+    gameCanvas.width=COLS*tileSize;
+    gameCanvas.height=ROWS*tileSize;
+    const maxW=Math.min(gameCanvas.width, window.innerWidth-24);
+    const maxH=Math.min(gameCanvas.height, window.innerHeight-24);
+    gameCanvas.style.width=maxW+"px";
+    gameCanvas.style.height=maxH+"px";
+  }
+
+  // =========================
+  // STATE
+  // =========================
+  let level = Number(localStorage.getItem(LEVEL_KEY) || "1")|0;
+  if(level!==1 && level!==2) level=1;
+
+  let lives = Number(localStorage.getItem(LIVES_KEY) || "3")|0;
+  if(lives<1 || lives>9) lives=3;
+
+  let collected = Number(localStorage.getItem(COLLECT_KEY) || "0")|0;
+  if(collected<0 || collected>5) collected=0;
+
+  let items = []; // {id, kind, x,y,r,collected}
+  let hasWon = false;
+
+  const player={x:0,y:0,r:9,dx:0,dy:0,nextDx:0,nextDy:0};
+
+  const ghosts=[
+    {x:0,y:0,r:9,dir:{dx:1,dy:0},wiggle:0,shade:0},
+    {x:0,y:0,r:9,dir:{dx:-1,dy:0},wiggle:0,shade:1},
+  ];
+
+  const dirs=[{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+
+  // timing
+  let lastT = performance.now();
+  let acc = 0;
+  let anim = 0;
+
+  // confetti
+  let confettiRunning=false;
+  let confetti=[];
+
+  // =========================
+  // MAP + COLLISION
+  // =========================
+  function tileAt(c,r){
+    if(r<0||r>=ROWS||c<0||c>=COLS) return 1;
+    return map[r][c];
+  }
+  function isWall(v){ return v===1 || v===3; }
+
+  function circleHitsWall(nx, ny, r){
+    const left=nx-r, right=nx+r, top=ny-r, bottom=ny+r;
+    const c1=(left/tileSize)|0, c2=(right/tileSize)|0;
+    const r1=(top/tileSize)|0,  r2=(bottom/tileSize)|0;
+    if(isWall(tileAt(c1,r1))) return true;
+    if(isWall(tileAt(c2,r1))) return true;
+    if(isWall(tileAt(c1,r2))) return true;
+    if(isWall(tileAt(c2,r2))) return true;
+    return false;
+  }
+
+  function findGate(){
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        if(map[r][c]===3 || map[r][c]===4) return {r,c};
+      }
+    }
+    return null;
+  }
+  function setGateOpen(open){
+    const g = findGate();
+    if(!g) return;
+    map[g.r][g.c] = open ? 4 : 3;
+  }
+
+  function updateHUD(){
+    hudLevel.textContent = String(level);
+    hudLives.textContent = String(lives);
+    hudCollected.textContent = `${collected}/${TOTAL_ITEMS_PER_LEVEL}`;
+    hudObjective.textContent = (level===1)
+      ? `🔎 Find ${TOTAL_ITEMS_PER_LEVEL} magnifying glasses`
+      : `💗 Find ${TOTAL_ITEMS_PER_LEVEL} hearts`;
+    localStorage.setItem(LEVEL_KEY, String(level));
+    localStorage.setItem(LIVES_KEY, String(lives));
+    localStorage.setItem(COLLECT_KEY, String(collected));
+  }
+
+  // =========================
+  // MAZE GENERATION (seeded; stable)
+  // =========================
+  function blankWalls(){
+    return Array.from({length:ROWS}, () => new Array(COLS).fill(1));
+  }
+
+  function carvePerfectMaze(rng){
+    const g = blankWalls();
+    const steps = [{dr:0,dc:2},{dr:0,dc:-2},{dr:2,dc:0},{dr:-2,dc:0}];
+    const stack = [{r:1,c:1}];
+    g[1][1]=0;
+
+    function inBounds(r,c){ return r>0 && r<ROWS-1 && c>0 && c<COLS-1; }
+
+    while(stack.length){
+      const cur = stack[stack.length-1];
+      const order = steps.slice();
+
+      // seeded shuffle
+      for(let i=order.length-1;i>0;i--){
+        const j = (rand01(rng)*(i+1))|0;
+        [order[i],order[j]]=[order[j],order[i]];
+      }
+
+      let moved=false;
+      for(const s of order){
+        const nr=cur.r+s.dr, nc=cur.c+s.dc;
+        if(!inBounds(nr,nc)) continue;
+        if(g[nr][nc]===1){
+          g[cur.r+s.dr/2][cur.c+s.dc/2]=0;
+          g[nr][nc]=0;
+          stack.push({r:nr,c:nc});
+          moved=true;
+          break;
+        }
+      }
+      if(!moved) stack.pop();
+    }
+    return g;
+  }
+
+  function addLoops(rng, g, knocks){
+    for(let k=0;k<knocks;k++){
+      const r = randInt(rng, 2, ROWS-3);
+      const c = randInt(rng, 2, COLS-3);
+      if(g[r][c]!==1) continue;
+      const openN = (g[r-1][c]===0)+(g[r+1][c]===0)+(g[r][c-1]===0)+(g[r][c+1]===0);
+      if(openN>=2) g[r][c]=0;
+    }
+  }
+
+  function tinyHub(g){
+    const cr=(ROWS/2)|0, cc=(COLS/2)|0;
+    for(let r=cr-1;r<=cr+1;r++){
+      for(let c=cc-1;c<=cc+1;c++){
+        if(r>0&&r<ROWS-1&&c>0&&c<COLS-1) g[r][c]=0;
+      }
+    }
+  }
+
+  function placeGate(g){
+    const gr = ROWS-2;
+    const gc = (COLS/2)|0;
+    g[gr][gc]=3;
+    g[gr-1][gc]=0;
+    g[gr-1][gc-1]=0;
+    g[gr-1][gc+1]=0;
+  }
+
+  function buildLevelMaze(lvl){
+    const rng = makeRngFor("maze", lvl);
+    const g = carvePerfectMaze(rng);
+    addLoops(rng, g, (lvl===1) ? 120 : 170);
+    tinyHub(g);
+    placeGate(g);
+    return g;
+  }
+
+  // =========================
+  // REACHABILITY + ITEMS (seeded; stable)
+  // =========================
+  function bfsDist(startR,startC){
+    const dist = Array.from({length:ROWS}, () => new Array(COLS).fill(-1));
+    const q = [[startR,startC]];
+    dist[startR][startC]=0;
+    let qi=0;
+    while(qi<q.length){
+      const [r,c]=q[qi++];
+      for(const d of dirs){
+        const nr=r+d.dy, nc=c+d.dx;
+        if(nr<0||nr>=ROWS||nc<0||nc>=COLS) continue;
+        if(dist[nr][nc]!==-1) continue;
+        if(isWall(map[nr][nc])) continue;
+        dist[nr][nc]=dist[r][c]+1;
+        q.push([nr,nc]);
+      }
+    }
+    return dist;
+  }
+
+  function pickFarthest(rng, dist, count){
+    const cells=[];
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        if(dist[r][c]>=0 && map[r][c]===0) cells.push({r,c,d:dist[r][c]});
+      }
+    }
+    cells.sort((a,b)=>b.d-a.d);
+    const top=cells.slice(0, Math.min(420, cells.length));
+
+    const picks=[];
+    const minSep = 9;
+    for(const cell of top){
+      let ok=true;
+      for(const p of picks){
+        if(Math.abs(p.r-cell.r)+Math.abs(p.c-cell.c) < minSep){ ok=false; break; }
+      }
+      if(ok){
+        picks.push(cell);
+        if(picks.length===count) break;
+      }
+    }
+    while(picks.length<count && top.length) picks.push(top[picks.length]);
+    // seeded tiny shuffle to avoid identical patterns while staying deterministic
+    for(let i=picks.length-1;i>0;i--){
+      const j=(rand01(rng)*(i+1))|0;
+      [picks[i],picks[j]]=[picks[j],picks[i]];
+    }
+    return picks.slice(0,count);
+  }
+
+  function resetPlayer(){
+    player.x=1.5*tileSize;
+    player.y=1.5*tileSize;
+    player.dx=player.dy=player.nextDx=player.nextDy=0;
+  }
+
+  function spawnGhosts(){
+    const rng = makeRngFor("ghostSpawn", level);
+
+    const pr=(player.y/tileSize)|0, pc=(player.x/tileSize)|0;
+    const dist=bfsDist(pr,pc);
+    const spots=pickFarthest(rng, dist, 2);
+
+    for(let i=0;i<2;i++){
+      const s = spots[i] || {r:ROWS-3, c:(COLS/2)|0};
+      ghosts[i].x=(s.c+0.5)*tileSize;
+      ghosts[i].y=(s.r+0.5)*tileSize;
+      ghosts[i].dir = dirs[(rand01(rng)*4)|0];
+      ghosts[i].wiggle = rand01(rng)*Math.PI*2;
+    }
+  }
+
+  function placeItems(){
+    const rng = makeRngFor("items", level);
+
+    const pr=(player.y/tileSize)|0, pc=(player.x/tileSize)|0;
+    const dist=bfsDist(pr,pc);
+    const spots=pickFarthest(rng, dist, TOTAL_ITEMS_PER_LEVEL);
+
+    items=[];
+    collected=0;
+    const kind = (level===1) ? "glass" : "heart";
+
+    for(let i=0;i<TOTAL_ITEMS_PER_LEVEL;i++){
+      const s=spots[i];
+      items.push({
+        id:i,
+        kind,
+        x:(s.c+0.5)*tileSize,
+        y:(s.r+0.5)*tileSize,
+        r:9,
+        collected:false
+      });
+    }
+
+    // Restore collected flags if present
+    const saved = localStorage.getItem(ITEMS_KEY);
+    if(saved){
+      try{
+        const parsed = JSON.parse(saved);
+        if(parsed && parsed[level] && Array.isArray(parsed[level])){
+          const flags = parsed[level];
+          for(let i=0;i<items.length;i++){
+            items[i].collected = !!flags[i];
+            if(items[i].collected) collected++;
+          }
+        }
+      }catch(e){}
+    }
+
+    setGateOpen(collected>=TOTAL_ITEMS_PER_LEVEL);
+    updateHUD();
+  }
+
+  function saveItemFlags(){
+    let obj = {};
+    const saved = localStorage.getItem(ITEMS_KEY);
+    if(saved){ try{ obj = JSON.parse(saved)||{}; }catch(e){ obj={}; } }
+    obj[level] = items.map(it=>!!it.collected);
+    localStorage.setItem(ITEMS_KEY, JSON.stringify(obj));
+  }
+
+  // =========================
+  // INPUT
+  // =========================
+  const keys=new Set();
+  function setIntendedDir(){
+    let ndx=0, ndy=0;
+    if(keys.has("ArrowLeft")||keys.has("a")||keys.has("A")) ndx=-1;
+    else if(keys.has("ArrowRight")||keys.has("d")||keys.has("D")) ndx=1;
+    else if(keys.has("ArrowUp")||keys.has("w")||keys.has("W")) ndy=-1;
+    else if(keys.has("ArrowDown")||keys.has("s")||keys.has("S")) ndy=1;
+    if(ndx||ndy){ player.nextDx=ndx; player.nextDy=ndy; }
+  }
+  window.addEventListener("keydown",(e)=>{
+    const k=e.key;
+    if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","w","a","s","d","W","A","S","D"].includes(k)) e.preventDefault();
+    keys.add(k); setIntendedDir();
+    startAudioOnce();
+  });
+  window.addEventListener("keyup",(e)=>keys.delete(e.key));
+
+  // =========================
+  // MODALS: Level 1 Q/A + Level 2 content
+  // =========================
+  function showClueModal(idx){
+    const clue=memoryClues[idx] || memoryClues[memoryClues.length-1];
+    const optionsHTML = clue.options.map(opt => `<button class="optBtn" data-opt="${escapeHTML(opt)}">${escapeHTML(opt)}</button>`).join("");
+    showModal({
+      title: clue.title,
+      bodyHTML: `
+        <p style="margin:0 0 8px; font-weight:1000; color:#fff">${escapeHTML(clue.q)}</p>
+        <div class="optionGrid">${optionsHTML}</div>
+        <div class="feedback" id="clueFeedback"></div>
+        <p class="small" style="margin-top:10px">(Pick the correct option. You can’t continue until you do.)</p>
+      `,
+      hint:"Choose the right answer to continue",
+      doneEnabled:false
+    });
+
+    const feedback=document.getElementById("clueFeedback");
+    const btns=[...modalBody.querySelectorAll(".optBtn")];
+    btns.forEach(b=>{
+      b.addEventListener("click",()=>{
+        const picked=b.getAttribute("data-opt");
+        if(picked.toLowerCase()===clue.correct.toLowerCase()){
+          feedback.textContent="Correct ✅";
+          feedback.style.color="var(--ok)";
+          doneBtn.disabled=false;
+        } else {
+          feedback.textContent="Not quite — try again.";
+          feedback.style.color="var(--danger)";
+          doneBtn.disabled=true;
+        }
+      });
+    });
+  }
+
+  function showLevel2Modal(idx){
+    const data=level2Popups[idx] || level2Popups[level2Popups.length-1];
+
+    if(data.type==="youtube"){
+      showModal({
+        title:"💗 Found a heart!",
+        bodyHTML:`<p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
+          <div class="ytWrap"><iframe src="${data.src}" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>
+          <p class="small" style="margin-top:10px">Click <b>Done</b> when you’re finished.</p>`,
+        doneEnabled:true
+      });
+      return;
+    }
+
+    if(data.type==="image"){
+      const safeSrc = escapeHTML(data.src||"");
+      showModal({
+        title:"💗 Found a heart!",
+        bodyHTML:`
+          <p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
+          <div class="imgBox">
+            <img id="popupImg" src="${safeSrc}" alt="Photo" />
+          </div>
+          <div class="small" style="margin-top:10px">
+            If the image doesn’t load (Canva links often block direct images), use this:
+            <div style="margin-top:8px; display:flex; gap:10px; flex-wrap:wrap;">
+              <a class="btn ghost" style="text-decoration:none;" href="${safeSrc}" target="_blank" rel="noreferrer">Open photo link</a>
+              <span class="small">(Best fix: replace PHOTO_URL in code with a direct .jpg/.png URL.)</span>
+            </div>
+          </div>
+          <p class="small" style="margin-top:10px">Click <b>Done</b> when you’re finished.</p>`,
+        doneEnabled:true
+      });
+      const img = document.getElementById("popupImg");
+      img.onerror = () => {
+        img.style.display="none";
+        const box = img.parentElement;
+        const fallback = document.createElement("div");
+        fallback.textContent = "IMAGE LINK DIDN’T LOAD (replace PHOTO_URL with a direct image URL)";
+        box.appendChild(fallback);
+      };
+      return;
+    }
+
+    showModal({
+      title:"💗 Found a heart!",
+      bodyHTML:`<p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
+        <div style="white-space:pre-wrap; background:#0c0d1d; border:1px solid rgba(255,255,255,.14);
+          border-radius:14px; padding:14px; color:#fff; line-height:1.4">${escapeHTML(data.text)}</div>
+        <p class="small" style="margin-top:10px">Click <b>Done</b> when you’re finished.</p>`,
+      doneEnabled:true
+    });
+  }
+
+  function showSecretLetter(){
+    showModal({
+      title:"💌 One last thing…",
+      bodyHTML: `
+        <div style="white-space:pre-wrap; background:#0c0d1d; border:1px solid rgba(255,255,255,.14);
+          border-radius:14px; padding:14px; color:#fff; line-height:1.4">${escapeHTML(finalSecretLetter)}</div>
+
+        <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; position:relative;">
+          <button class="btn ok" id="yesBtn">Yes 💗</button>
+          <button class="btn danger" id="noBtn">No</button>
+        </div>
+
+        <div class="small" style="margin-top:10px">The “No” button will try to escape.</div>
+      `,
+      hint:"Click “Yes”",
+      doneEnabled:false
+    });
+
+    const yesBtn = document.getElementById("yesBtn");
+    const noBtn  = document.getElementById("noBtn");
+    const container = noBtn.parentElement;
+
+    function moveNo(){
+      const pane = container.getBoundingClientRect();
+      const b = noBtn.getBoundingClientRect();
+      const pad = 6;
+      const maxX = pane.width - b.width - pad;
+      const maxY = 70;
+      const x = pad + Math.random() * Math.max(10, maxX - pad);
+      const y = pad + Math.random() * Math.max(10, maxY - pad);
+
+      noBtn.style.position = "absolute";
+      noBtn.style.left = x + "px";
+      noBtn.style.top  = y + "px";
+    }
+    noBtn.addEventListener("mouseenter", moveNo);
+    noBtn.addEventListener("click", moveNo);
+
+    yesBtn.addEventListener("click", () => {
+      doneBtn.disabled = false;
+      modalHint.textContent = "Locked in 💗";
+      yesBtn.disabled = true;
+      noBtn.disabled = true;
+      yesBtn.textContent = "YES 💗 (Locked In)";
+    });
+  }
+
+  // =========================
+  // MOVEMENT
+  // =========================
+  function attemptTurn(){
+    if(!(player.nextDx||player.nextDy)) return;
+    const nx = player.x + player.nextDx * 2;
+    const ny = player.y + player.nextDy * 2;
+    if(!circleHitsWall(nx,ny,player.r)){
+      player.dx=player.nextDx;
+      player.dy=player.nextDy;
+    }
+  }
+  function movePlayer(dt){
+    attemptTurn();
+    const nx=player.x + player.dx*playerSpeed*dt;
+    const ny=player.y + player.dy*playerSpeed*dt;
+    if(!circleHitsWall(nx,ny,player.r)){ player.x=nx; player.y=ny; }
+    else { player.dx=0; player.dy=0; }
+  }
+
+  function chooseGhostDir(g){
+    const tc=(g.x/tileSize)|0;
+    const tr=(g.y/tileSize)|0;
+    const cx=(tc+0.5)*tileSize;
+    const cy=(tr+0.5)*tileSize;
+
+    if(Math.abs(g.x-cx)>0.9 || Math.abs(g.y-cy)>0.9) return;
+
+    g.x=cx; g.y=cy;
+
+    const valid=[];
+    for(const d of dirs){
+      const nx=cx + d.dx*tileSize*0.55;
+      const ny=cy + d.dy*tileSize*0.55;
+      if(!circleHitsWall(nx,ny,g.r)) valid.push(d);
+    }
+    if(valid.length===0) return;
+
+    const fwd=g.dir;
+    const rev={dx:-fwd.dx, dy:-fwd.dy};
+
+    const fwdOk = valid.some(d=>d.dx===fwd.dx && d.dy===fwd.dy);
+    const atIntersection = valid.length >= 3;
+
+    // seeded-ish: use Math.random lightly but doesn't affect maze. If you want fully deterministic, swap to rand01(makeRngFor("ghostMove", level)).
+    const shouldRandomTurn = atIntersection && Math.random() < 0.55;
+
+    if(!fwdOk || shouldRandomTurn){
+      const nonReverse = valid.filter(d => !(d.dx===rev.dx && d.dy===rev.dy));
+      const options = nonReverse.length ? nonReverse : valid;
+      g.dir = options[(Math.random()*options.length)|0];
+      return;
+    }
+    g.dir = fwd;
+  }
+
+  function moveGhost(g, dt){
+    chooseGhostDir(g);
+    const nx=g.x + g.dir.dx*ghostSpeed*dt;
+    const ny=g.y + g.dir.dy*ghostSpeed*dt;
+
+    if(!circleHitsWall(nx,ny,g.r)){
+      g.x=nx; g.y=ny;
+    } else {
+      g.dir = {dx:-g.dir.dx, dy:-g.dir.dy};
+    }
+  }
+
+  // =========================
+  // GAME EVENTS
+  // =========================
+  function openGateIfReady(){
+    if(collected>=TOTAL_ITEMS_PER_LEVEL) setGateOpen(true);
+  }
+
+  function tryGateTransition(){
+    const g=findGate();
+    if(!g) return;
+    if(map[g.r][g.c]!==4) return;
+
+    const gx=(g.c+0.5)*tileSize, gy=(g.r+0.5)*tileSize;
+    if(Math.hypot(player.x-gx, player.y-gy) < tileSize*0.6){
+      if(level===1){
+        startLevel(2, true);
+      } else {
+        triggerCongrats();
+      }
+    }
+  }
+
+  function checkItemCollisions(){
+    for(const it of items){
+      if(it.collected) continue;
+      if(Math.hypot(player.x-it.x, player.y-it.y) < player.r+it.r){
+        it.collected=true;
+        collected++;
+        saveItemFlags();
+        updateHUD();
+
+        if(level===1) showClueModal(it.id);
+        else showLevel2Modal(it.id);
+
+        openGateIfReady();
+        break;
+      }
+    }
+  }
+
+  function checkGhostCollisions(){
+    for(const g of ghosts){
+      if(Math.hypot(player.x-g.x, player.y-g.y) < player.r+g.r-2){
+        lives--;
+        updateHUD();
+
+        if(lives<=0){
+          showModal({
+            title:"💥 Game Over",
+            bodyHTML:`<p>You ran out of lives.</p><p class="small">Click <b>Done</b> to restart from Level 1.</p>`,
+            doneEnabled:true,
+            onDone:()=>{ lives=3; startLevel(1, true); }
+          });
+          return;
+        }
+
+        resetPlayer();
+        spawnGhosts();
+        break;
+      }
+    }
+  }
+
+  // =========================
+  // DRAW (maze + items + sprites)
+  // =========================
+  function drawMap(){
+    for(let r=0;r<ROWS;r++){
+      const row=map[r];
+      for(let c=0;c<COLS;c++){
+        const v=row[c];
+        const x=c*tileSize, y=r*tileSize;
+
+        if(v===1){
+          gctx.fillStyle="rgba(27,66,255,0.95)";
+          gctx.fillRect(x,y,tileSize,tileSize);
+          gctx.fillStyle="rgba(255,255,255,0.06)";
+          gctx.fillRect(x+2,y+2,tileSize-4,tileSize-4);
+        } else {
+          gctx.fillStyle=((r+c)&1) ? "rgba(9,9,18,1)" : "rgba(11,11,20,1)";
+          gctx.fillRect(x,y,tileSize,tileSize);
+        }
+
+        // gate tile
+        if(v===3||v===4){
+          gctx.fillStyle=(v===3) ? "rgba(255,215,0,0.95)" : "rgba(47,225,122,0.85)";
+          gctx.fillRect(x+2,y+2,tileSize-4,tileSize-4);
+          gctx.fillStyle="rgba(0,0,0,0.35)";
+          gctx.fillRect(x+6,y+6,tileSize-12,tileSize-12);
+        }
+      }
+    }
+  }
+
+  function drawMagnifyingGlass(x,y){
+    gctx.save();
+    gctx.translate(x,y);
+    gctx.strokeStyle="rgba(255,255,255,0.95)";
+    gctx.lineWidth=2.2;
+    gctx.beginPath(); gctx.arc(0,0,7.5,0,Math.PI*2); gctx.stroke();
+    gctx.strokeStyle="rgba(255,255,255,0.85)";
+    gctx.lineWidth=3.0;
+    gctx.beginPath(); gctx.moveTo(6,6); gctx.lineTo(12,12); gctx.stroke();
+    gctx.restore();
+  }
+
+  function drawHeartIcon(x,y){
+    gctx.save();
+    gctx.translate(x,y);
+    gctx.scale(0.7,0.7);
+    gctx.beginPath();
+    gctx.moveTo(0,6);
+    gctx.bezierCurveTo(0,-2,-12,-2,-12,6);
+    gctx.bezierCurveTo(-12,14,0,18,0,26);
+    gctx.bezierCurveTo(0,18,12,14,12,6);
+    gctx.bezierCurveTo(12,-2,0,-2,0,6);
+    gctx.closePath();
+    gctx.fillStyle="#ff4fb3";
+    gctx.fill();
+    gctx.restore();
+  }
+
+  function drawItems(){
+    for(const it of items){
+      if(it.collected) continue;
+      if(it.kind==="glass") drawMagnifyingGlass(it.x,it.y);
+      else drawHeartIcon(it.x,it.y);
+    }
+  }
+
+  function drawPlayer(){
+    const angle=Math.atan2(player.dy||player.nextDy||0, player.dx||player.nextDx||1);
+    const mouth=0.35 + 0.18*Math.sin(anim*0.18);
+    gctx.save();
+    gctx.translate(player.x,player.y);
+    gctx.beginPath();
+    gctx.moveTo(0,0);
+    gctx.arc(0,0,player.r+2, angle+mouth, angle+(Math.PI*2-mouth));
+    gctx.closePath();
+    gctx.fillStyle="#ff4fb3";
+    gctx.fill();
+    gctx.beginPath(); gctx.arc(4,-4,2.1,0,Math.PI*2);
+    gctx.fillStyle="rgba(255,255,255,.92)"; gctx.fill();
+    gctx.restore();
+  }
+
+  function drawGhost(g){
+    // pupils follow direction a bit
+    const px=clamp(g.dir.dx*1.6,-1.6,1.6);
+    const py=clamp(g.dir.dy*1.6,-1.6,1.6);
+    drawGhostSprite(gctx, g.x, g.y, g.wiggle, g.shade, 1.0, px, py);
+  }
+
+  function drawGame(){
+    gctx.fillStyle="#06060f";
+    gctx.fillRect(0,0,gameCanvas.width,gameCanvas.height);
+    drawMap();
+    drawItems();
+    drawPlayer();
+    ghosts[0].wiggle += 0.2; ghosts[1].wiggle += 0.2;
+    drawGhost(ghosts[0]);
+    drawGhost(ghosts[1]);
+  }
+
+  // =========================
+  // LEVEL START
+  // =========================
+  function ensureGateReachable(){
+    const pr=(player.y/tileSize)|0, pc=(player.x/tileSize)|0;
+    const dist=bfsDist(pr,pc);
+    const g=findGate();
+    if(g && dist[g.r][g.c]===-1){
+      for(let r=pr;r<=g.r;r++){
+        if(map[r][pc]===1) map[r][pc]=0;
+      }
+      map[g.r][g.c]=3;
+    }
+  }
+
+  function startLevel(n, doFade){
+    hasWon=false;
+
+    level=n;
+    map = buildLevelMaze(level);
+
+    fitGame();
+    resetPlayer();
+    ensureGateReachable();
+    spawnGhosts();
+    placeItems();
+    updateHUD();
+
+    if(doFade){
+      fadeTo(()=>{ showLayer(gameLayer); setProgress(Progress.GAME_STARTED); setMusicVolume("game"); });
+    }
+  }
+
+  // =========================
+  // CONFETTI (stable + simple)
+  // =========================
+  function startConfetti(){
+    confettiCanvas.width = window.innerWidth;
+    confettiCanvas.height = window.innerHeight;
+    confettiCanvas.style.display = "block";
+
+    confetti = [];
+    for(let i=0;i<240;i++){
+      confetti.push({
+        x: Math.random()*confettiCanvas.width,
+        y: -Math.random()*confettiCanvas.height,
+        vy: 2 + Math.random()*4,
+        vx: -1 + Math.random()*2,
+        s: 2 + Math.random()*4,
+        a: Math.random()*Math.PI*2,
+        va: -0.2 + Math.random()*0.4,
+      });
+    }
+    confettiRunning = true;
+  }
+  function drawConfetti(){
+    if(!confettiRunning) return;
+    cctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+    for(const p of confetti){
+      p.x += p.vx;
+      p.y += p.vy;
+      p.a += p.va;
+
+      if(p.y > confettiCanvas.height + 20){
+        p.y = -20;
+        p.x = Math.random()*confettiCanvas.width;
+      }
+      if(p.x < -30) p.x = confettiCanvas.width + 30;
+      if(p.x > confettiCanvas.width + 30) p.x = -30;
+
+      cctx.save();
+      cctx.translate(p.x,p.y);
+      cctx.rotate(p.a);
+      cctx.fillRect(-p.s, -p.s/2, p.s*2.2, p.s);
+      cctx.restore();
+    }
+  }
+
+  // =========================
+  // CONGRATS -> ENDING CUTSCENES
+  // =========================
+  function triggerCongrats(){
+    if(hasWon) return;
+    hasWon=true;
+    paused=true;
+
+    winOverlay.style.display = "grid";
+    startConfetti();
+
+    continueBtn.onclick = () => {
+      winOverlay.style.display = "none";
+      confettiRunning=false;
+      confettiCanvas.style.display="none";
+      cctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+
+      setProgress(Progress.ENDING);
+      startEndingCutscenes();
+    };
+  }
+
+  // =========================================================
+  // ENDING CUTSCENES (slow + gate text on gate + minecraft-ish trees)
+  // =========================================================
+  const ending = {
+    mode: "off",
+    phase: "approachGate",
+    t0: 0,
+    clickArmed: false,
+
+    // characters
+    pink: {x:-120, y:0, facing:0, r:18},
+    blue: {x:0, y:0, facing:Math.PI, r:18},
+
+    // gate
+    gate: {x:0, y:0, openAmt:0},
+
+    // dialogue
+    lines: [],
+    lineIndex: 0,
+    showBubbleFrom: null, // "pink" | "blue" | null
+    bubbleText: "",
+
+    // heart gift
+    heart: {active:false, x:0,y:0, r:16, hover:false, pulse:0},
+
+    // camera/bg
+    fade: 0
+  };
+
+  function drawMeadowBackground(w,h){
+    // clean white background
+    ectx.fillStyle="#f7f7ff";
+    ectx.fillRect(0,0,w,h);
+
+    // subtle pixel "ground" strip
+    const groundY = Math.floor(h*0.70);
+    ectx.fillStyle="#ffffff";
+    ectx.fillRect(0, groundY, w, h-groundY);
+
+    // light grid for pixel vibe
+    ectx.strokeStyle="rgba(10,10,20,0.04)";
+    ectx.lineWidth=1;
+    const spacing=48;
+    for(let y=0; y<h; y+=spacing){
+      ectx.beginPath(); ectx.moveTo(0,y); ectx.lineTo(w,y); ectx.stroke();
+    }
+    for(let x=0; x<w; x+=spacing){
+      ectx.beginPath(); ectx.moveTo(x,0); ectx.lineTo(x,h); ectx.stroke();
+    }
+
+    // minecraft-ish trees (static, NO glitch)
+    function block(x,y,s,fill,shade){
+      ectx.fillStyle=fill;
+      ectx.fillRect(x,y,s,s);
+      ectx.fillStyle=shade;
+      ectx.fillRect(x+2,y+2,s-4,s-4);
+    }
+    function tree(tx, ty, scale){
+      const s=scale;
+      // trunk
+      for(let i=0;i<4;i++){
+        block(tx, ty - i*s, s, "#8b5a2b", "rgba(255,255,255,0.10)");
+      }
+      // leaves (cube)
+      const leaf="#2f8f4e";
+      for(let r=-2;r<=2;r++){
+        for(let c=-2;c<=2;c++){
+          if(Math.abs(r)+Math.abs(c) > 4) continue;
+          block(tx + c*s, ty - 4*s + r*s, s, leaf, "rgba(255,255,255,0.10)");
+        }
+      }
+      // pink flowers pixels
+      const pink="#ff4fb3";
+      for(let i=0;i<6;i++){
+        const fx = tx + (-3 + ((i*7)%7))*s*0.35;
+        const fy = ty + (8 + ((i*11)%9))*s*0.25;
+        ectx.fillStyle=pink;
+        ectx.fillRect((fx|0), (fy|0), (s*0.35)|0, (s*0.35)|0);
+      }
+    }
+
+    const baseY = Math.floor(h*0.69);
+    tree(Math.floor(w*0.18), baseY, 18);
+    tree(Math.floor(w*0.82), baseY, 18);
+    tree(Math.floor(w*0.32), baseY+8, 14);
+    tree(Math.floor(w*0.68), baseY+8, 14);
+  }
+
+  function startEndingCutscenes(){
+    startAudioOnce();
+    setMusicVolume("ending");
+    rampHumTo(audioOn ? 0.03 : 0.0001, 0.8);
+
+    ending.mode="on";
+    ending.phase="approachGate";
+    ending.t0=performance.now();
+    ending.fade=0;
+    ending.clickArmed=false;
+
+    const w=endingCanvas.width, h=endingCanvas.height;
+    const midY = h*0.55;
+
+    ending.pink.x = -120;
+    ending.pink.y = midY;
+    ending.pink.facing = 0;
+
+    ending.blue.x = w + 120;
+    ending.blue.y = midY;
+    ending.blue.facing = Math.PI;
+
+    ending.gate.x = w*0.65;
+    ending.gate.y = midY;
+    ending.gate.openAmt = 0;
+
+    ending.bubbleText="";
+    ending.showBubbleFrom=null;
+
+    ending.lines = [
+      {from:"pink", text:"Finally made it…"},
+      {from:"blue", text:"I missed you so much… I’ve been waiting on you for so long."},
+      {from:"pink", text:"I tried my best to be here as soon as possible."},
+      {from:"blue", text:"I’m just glad you’re finally here."},
+      {from:"blue", text:"Here’s the final heart I’ve been meaning to give to you."},
+    ];
+    ending.lineIndex=0;
+
+    ending.heart.active=false;
+    ending.heart.pulse=0;
+
+    fadeTo(()=>{ showLayer(endingLayer); });
+  }
+
+  function currentEndingLine(){
+    return ending.lines[ending.lineIndex] || null;
+  }
+
+  function advanceEndingDialogue(){
+    // only used in "meetDialogue" phase
+    ending.lineIndex++;
+    const ln = currentEndingLine();
+    if(!ln){
+      // spawn heart
+      ending.phase="heartGift";
+      ending.t0=performance.now();
+      ending.bubbleText="";
+      ending.showBubbleFrom=null;
+      ending.heart.active=true;
+
+      // spawn at blue mouth
+      ending.heart.x = ending.blue.x + Math.cos(Math.PI)*8;
+      ending.heart.y = ending.blue.y - 4;
+      ending.heart.r = 18;
+      return;
+    }
+    ending.showBubbleFrom = ln.from;
+    ending.bubbleText = ln.text;
+  }
+
+  // Click-to-advance for slow pacing
+  function onEndingClick(){
+    if(ending.mode!=="on") return;
+
+    if(ending.phase==="meetDialogue"){
+      advanceEndingDialogue();
+      return;
+    }
+
+    if(ending.phase==="pauseAfterGateEnter"){
+      ending.phase="fadeToMeadow";
+      ending.t0=performance.now();
+      return;
+    }
+
+    // heart click handled in mouse move/click
+  }
+  endingCanvas.addEventListener("click", onEndingClick);
+
+  // Heart hover/click
+  endingCanvas.addEventListener("mousemove",(e)=>{
+    if(ending.mode!=="on" || !ending.heart.active) return;
+    const rect = endingCanvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (endingCanvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (endingCanvas.height / rect.height);
+    ending.heart.hover = (Math.hypot(mx-ending.heart.x, my-ending.heart.y) <= ending.heart.r*0.95);
+    endingCanvas.style.cursor = ending.heart.hover ? "pointer" : "default";
+  });
+  endingCanvas.addEventListener("click",(e)=>{
+    if(ending.mode!=="on" || !ending.heart.active) return;
+    const rect = endingCanvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (endingCanvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (endingCanvas.height / rect.height);
+    if(Math.hypot(mx-ending.heart.x, my-ending.heart.y) <= ending.heart.r*0.95){
+      ending.heart.active=false;
+      endingCanvas.style.cursor="default";
+      showSecretLetter();
+    }
+  });
+
+  function drawEndingFrame(now){
+    if(!endingLayer.classList.contains("active") || ending.mode!=="on"){
+      requestAnimationFrame(drawEndingFrame);
+      return;
+    }
+    const w=endingCanvas.width, h=endingCanvas.height;
+
+    // Phase A: return to the gate scene (dark grid vibe like intro)
+    if(ending.phase==="approachGate" || ending.phase==="gateOpen" || ending.phase==="enterGate" || ending.phase==="pauseAfterGateEnter" || ending.phase==="fadeToMeadow"){
+      // background like intro (gate world)
+      ectx.fillStyle="#05050a";
+      ectx.fillRect(0,0,w,h);
+      ectx.strokeStyle="rgba(27,66,255,0.12)";
+      ectx.lineWidth=2;
+      const spacing=48;
+      for(let y=spacing; y<h; y+=spacing){
+        ectx.beginPath(); ectx.moveTo(0,y); ectx.lineTo(w,y); ectx.stroke();
+      }
+      for(let x=spacing; x<w; x+=spacing){
+        ectx.beginPath(); ectx.moveTo(x,0); ectx.lineTo(x,h); ectx.stroke();
+      }
+
+      const midY = h*0.55;
+      ending.pink.y = midY;
+      ending.gate.y = midY;
+
+      // slow approach to gate
+      if(ending.phase==="approachGate"){
+        const dur = 4.6; // slower
+        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
+        ending.pink.x = lerp(-120, ending.gate.x - 52, easeInOut(t));
+        ending.pink.facing = 0;
+
+        // gate message on gate (NOT character)
+        drawGateCard(ectx, ending.gate.x, ending.gate.y, "YOU MAY", "ENTER", 0, 0);
+
+        // character
+        drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
+
+        if(t>=1){
+          ending.phase="gateOpen";
+          ending.t0=now;
+        }
+        requestAnimationFrame(drawEndingFrame);
+        return;
+      }
+
+      if(ending.phase==="gateOpen"){
+        // door opening slowly
+        const dur=1.8;
+        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
+        ending.gate.openAmt = easeInOut(t);
+
+        drawGateCard(ectx, ending.gate.x, ending.gate.y, "YOU MAY", "ENTER", 0, ending.gate.openAmt);
+        drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
+
+        if(t>=1){
+          ending.phase="enterGate";
+          ending.t0=now;
+        }
+        requestAnimationFrame(drawEndingFrame);
+        return;
+      }
+
+      if(ending.phase==="enterGate"){
+        // character walks into gate (slow), then fade to black
+        const dur=2.6;
+        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
+
+        const startX = ending.gate.x - 52;
+        const endX = ending.gate.x + 6;
+        ending.pink.x = lerp(startX, endX, easeInOut(t));
+
+        drawGateCard(ectx, ending.gate.x, ending.gate.y, "YOU MAY", "ENTER", 0, 1);
+        drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
+
+        // fade to black at end
+        const fadeT = clamp((t-0.65)/0.35, 0, 1);
+        ectx.fillStyle=`rgba(0,0,0,${fadeT})`;
+        ectx.fillRect(0,0,w,h);
+
+        if(t>=1){
+          ending.phase="pauseAfterGateEnter";
+          ending.t0=now;
+        }
+        requestAnimationFrame(drawEndingFrame);
+        return;
+      }
+
+      if(ending.phase==="pauseAfterGateEnter"){
+        // hold black (wait for click OR auto after 1.2s)
+        ectx.fillStyle="#000";
+        ectx.fillRect(0,0,w,h);
+
+        const t = (now-ending.t0)/1000;
+        if(t>1.2){
+          ending.phase="fadeToMeadow";
+          ending.t0=now;
+        }
+        requestAnimationFrame(drawEndingFrame);
+        return;
+      }
+
+      if(ending.phase==="fadeToMeadow"){
+        // fade from black to meadow
+        const dur=1.2;
+        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
+
+        drawMeadowBackground(w,h);
+
+        // dark overlay fades out
+        ectx.fillStyle=`rgba(0,0,0,${1-easeOut(t)})`;
+        ectx.fillRect(0,0,w,h);
+
+        if(t>=1){
+          ending.phase="meadowWalk";
+          ending.t0=now;
+
+          // position gate on left as "exit"
+          ending.gate.x = w*0.22;
+          ending.gate.y = h*0.55;
+          ending.gate.openAmt = 1;
+
+          // pink starts just outside the gate
+          ending.pink.x = ending.gate.x + 8;
+          ending.pink.y = ending.gate.y;
+          ending.pink.facing = 0;
+
+          // blue off-screen right
+          ending.blue.x = w + 140;
+          ending.blue.y = ending.gate.y;
+          ending.blue.facing = Math.PI;
+
+          // first line shown, but click-to-advance later
+          ending.showBubbleFrom = "pink";
+          ending.bubbleText = "Finally made it…";
+        }
+
+        requestAnimationFrame(drawEndingFrame);
+        return;
+      }
+    }
+
+    // Phase B: meadow scene + meet + heart
+    if(ending.phase==="meadowWalk" || ending.phase==="meetApproach" || ending.phase==="meetDialogue" || ending.phase==="heartGift"){
+      drawMeadowBackground(w,h);
+
+      // draw the exit gate on left (open)
+      drawGateCard(ectx, ending.gate.x, ending.gate.y, "", "", 0, 1);
+
+      // pink walks a bit forward slowly, then stops
+      if(ending.phase==="meadowWalk"){
+        const dur=2.4;
+        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
+        ending.pink.x = lerp(ending.gate.x + 8, w*0.40, easeInOut(t));
+        ending.pink.facing = 0;
+
+        // keep bubble on pink
+        drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
+        drawDioPac(ectx, ending.blue.x, ending.blue.y, now, Math.PI, "#3aa0ff", 18); // hidden off-screen but harmless
+
+        drawSpeechBubble(ectx, ending.pink.x, ending.pink.y, "Finally made it…");
+
+        if(t>=1){
+          ending.phase="meetApproach";
+          ending.t0=now;
+          ending.bubbleText="";
+          ending.showBubbleFrom=null;
+        }
+        requestAnimationFrame(drawEndingFrame);
+        return;
+      }
+
+      if(ending.phase==="meetApproach"){
+        // blue approaches SLOW
+        const meetX = w*0.40 + 58; // close to pink
+        const dur=4.8;
+        const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
+        ending.blue.x = lerp(w+140, meetX, easeInOut(t));
+        ending.blue.facing = Math.PI;
+
+        // pink holds
+        ending.pink.facing = 0;
+
+        drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
+        drawDioPac(ectx, ending.blue.x, ending.blue.y, now, Math.PI, "#3aa0ff", 18);
+
+        if(t>=1){
+          // start dialogue (click-to-advance, very slow)
+          ending.phase="meetDialogue";
+          ending.t0=now;
+          ending.lineIndex=0;
+          const ln = currentEndingLine();
+          ending.showBubbleFrom = ln.from;
+          ending.bubbleText = ln.text;
+        }
+        requestAnimationFrame(drawEndingFrame);
+        return;
+      }
+
+      if(ending.phase==="meetDialogue"){
+        // draw both
+        drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
+        drawDioPac(ectx, ending.blue.x, ending.blue.y, now, Math.PI, "#3aa0ff", 18);
+
+        // show bubble from speaker
+        if(ending.bubbleText){
+          const who = ending.showBubbleFrom;
+          const bx = (who==="blue") ? ending.blue.x : ending.pink.x;
+          const by = (who==="blue") ? ending.blue.y : ending.pink.y;
+          drawSpeechBubble(ectx, bx, by, ending.bubbleText);
+
+          // small hint
+          ectx.save();
+          ectx.fillStyle="rgba(15,16,34,0.78)";
+          ectx.strokeStyle="rgba(255,255,255,0.14)";
+          ectx.lineWidth=1.5;
+          roundRect(ectx, w*0.5-140, h*0.12, 280, 34, 12);
+          ectx.fill(); ectx.stroke();
+          ectx.fillStyle="rgba(255,255,255,0.85)";
+          ectx.font="900 13px system-ui";
+          ectx.textAlign="center";
+          ectx.fillText("Click anywhere to continue…", w*0.5, h*0.12+22);
+          ectx.restore();
+        }
+        requestAnimationFrame(drawEndingFrame);
+        return;
+      }
+
+      if(ending.phase==="heartGift"){
+        // draw both close
+        drawDioPac(ectx, ending.pink.x, ending.pink.y, now, 0, "#ff4fb3", 18);
+        drawDioPac(ectx, ending.blue.x, ending.blue.y, now, Math.PI, "#3aa0ff", 18);
+
+        // heart floats to top middle between them
+        if(ending.heart.active){
+          ending.heart.pulse += 0.06;
+          const targetX = (ending.pink.x + ending.blue.x)/2;
+          const targetY = ending.pink.y - 120;
+          const t = clamp((now-ending.t0)/1000 / 1.6, 0, 1);
+
+          // from blue mouth to top center between them
+          const startX = ending.blue.x - 10;
+          const startY = ending.blue.y - 4;
+          ending.heart.x = lerp(startX, targetX, easeOut(t));
+          ending.heart.y = lerp(startY, targetY, easeOut(t));
+
+          // draw heart (clickable)
+          const scale = 1 + 0.06*Math.sin(ending.heart.pulse);
+          ectx.save();
+          ectx.translate(ending.heart.x, ending.heart.y);
+          ectx.scale(scale, scale);
+          ectx.beginPath();
+          ectx.moveTo(0,6);
+          ectx.bezierCurveTo(0,-2,-12,-2,-12,6);
+          ectx.bezierCurveTo(-12,14,0,18,0,26);
+          ectx.bezierCurveTo(0,18,12,14,12,6);
+          ectx.bezierCurveTo(12,-2,0,-2,0,6);
+          ectx.closePath();
+          ectx.fillStyle="#ff4fb3";
+          ectx.fill();
+
+          if(ending.heart.hover){
+            ectx.shadowColor="rgba(255,79,179,0.7)";
+            ectx.shadowBlur=18;
+            ectx.strokeStyle="rgba(255,255,255,0.75)";
+            ectx.lineWidth=2;
+            ectx.stroke();
+          }
+          ectx.restore();
+
+          // hint label
+          ectx.save();
+          ectx.fillStyle="rgba(15,16,34,0.78)";
+          ectx.strokeStyle="rgba(255,255,255,0.14)";
+          ectx.lineWidth=1.5;
+          roundRect(ectx, w*0.5-170, h*0.12, 340, 34, 12);
+          ectx.fill(); ectx.stroke();
+          ectx.fillStyle="rgba(255,255,255,0.85)";
+          ectx.font="900 13px system-ui";
+          ectx.textAlign="center";
+          ectx.fillText("Click the heart 💗", w*0.5, h*0.12+22);
+          ectx.restore();
+        }
+
+        requestAnimationFrame(drawEndingFrame);
+        return;
+      }
+    }
+
+    requestAnimationFrame(drawEndingFrame);
+  }
+
+  // =========================================================
+  // GAME LOOP
+  // =========================================================
+  function step(now){
+    const dt=(now-lastT)/1000;
+    lastT=now;
+    acc += clamp(dt,0,0.06);
+
+    let sub=0;
+    while(acc>=fixedDt && sub<maxSubSteps){
+      if(gameLayer.classList.contains("active") && !paused){
+        movePlayer(fixedDt);
+        moveGhost(ghosts[0], fixedDt);
+        moveGhost(ghosts[1], fixedDt);
+        checkItemCollisions();
+        checkGhostCollisions();
+        tryGateTransition();
+      }
+      acc-=fixedDt;
+      sub++;
+    }
+
+    anim++;
+    if(gameLayer.classList.contains("active")){
+      drawGame();
+    }
+    drawConfetti();
+
+    requestAnimationFrame(step);
+  }
+
+  // =========================================================
+  // BUTTONS
+  // =========================================================
+  rulesBtn.addEventListener("click",()=>{
+    startAudioOnce();
+    alert(
+      "Level 1: collect 5 magnifying glasses and answer each memory question.\n" +
+      "Level 2: collect 5 hearts (each shows a popup).\n" +
+      "After that: Continue → gate opens → new map with trees → heart click → Valentine popup."
+    );
+  });
+
+  letsGoBtn.addEventListener("click", ()=>{
+    startAudioOnce();
+    setMusicVolume("game");
+    rampHumTo(audioOn ? 0.05 : 0.0001, 1.2);
+    startLevel(1, true);
+  });
+
+  resetBtn.addEventListener("click",()=>{
+    resetAllPersistent();
+    location.reload();
+  });
+
+  // =========================================================
+  // BOOT
+  // =========================================================
+  progressText.textContent = getProgress();
+
+  function boot(){
+    const p = getProgress();
+
+    requestAnimationFrame(particlesLoop);
+    requestAnimationFrame(step);
+    requestAnimationFrame(drawEndingFrame);
+
+    if(p === Progress.NEW){
+      showLayer(introLayer);
+      setMusicVolume("intro");
+      hideIntroBottom();
+      requestAnimationFrame(runIntroFrame);
+      return;
+    }
+
+    if(p === Progress.INTRO_DONE || p === Progress.MISSION_SHOWN){
+      showLayer(missionLayer);
+      setMusicVolume("mission");
+      setTimeout(()=>{ turnOnParticles(); }, 100);
+      return;
+    }
+
+    if(p === Progress.GAME_STARTED){
+      showLayer(gameLayer);
+      startAudioOnce();
+      setMusicVolume("game");
+      rampHumTo(audioOn ? 0.05 : 0.0001, 0.7);
+
+      // resume level
+      map = buildLevelMaze(level);
+      fitGame();
+      resetPlayer();
+      ensureGateReachable();
+      spawnGhosts();
+      placeItems();
+      updateHUD();
+      return;
+    }
+
+    if(p === Progress.ENDING){
+      startEndingCutscenes();
+      return;
+    }
+
+    showLayer(missionLayer);
+    setMusicVolume("mission");
+    setTimeout(()=>{ turnOnParticles(); }, 100);
+  }
+
+  // Start gameplay input can also start audio
+  window.addEventListener("pointerdown", startAudioOnce, {once:true});
+
+  // Kick off intro loop (only visible if introLayer active)
+  requestAnimationFrame(runIntroFrame);
+
+  boot();
+})();
+</script>
+</body>
+</html>
+
+
