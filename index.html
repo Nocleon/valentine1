@@ -2390,6 +2390,12 @@ Will you be my Valentine? 💗`;
     tree(Math.floor(w*0.68), baseY+8, 14);
   }
 
+  function meadowTreeCenterX(w){
+    const innerLeftTreeX = w*0.32;
+    const innerRightTreeX = w*0.68;
+    return (innerLeftTreeX + innerRightTreeX) * 0.5;
+  }
+
   function startEndingCutscenes(){
     startAudioOnce();
     setMusicVolume("ending");
@@ -2654,7 +2660,10 @@ Will you be my Valentine? 💗`;
       if(ending.phase==="meadowWalk"){
         const dur=2.4;
         const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
-        ending.pink.x = lerp(ending.gate.x + 8, w*0.40, easeInOut(t));
+        const meetCenterX = meadowTreeCenterX(w);
+        const meetGap = 42;
+        const pinkMeetX = meetCenterX - meetGap/2;
+        ending.pink.x = lerp(ending.gate.x + 8, pinkMeetX, easeInOut(t));
         ending.pink.facing = 0;
 
         // keep bubble on pink
@@ -2675,7 +2684,9 @@ Will you be my Valentine? 💗`;
 
       if(ending.phase==="meetApproach"){
         // blue approaches SLOW
-        const meetX = w*0.40 + 58; // close to pink
+        const meetCenterX = meadowTreeCenterX(w);
+        const meetGap = 42;
+        const meetX = meetCenterX + meetGap/2;
         const dur=4.8;
         const t = clamp((now-ending.t0)/1000 / dur, 0, 1);
         ending.blue.x = lerp(w+140, meetX, easeInOut(t));
