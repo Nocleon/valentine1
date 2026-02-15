@@ -249,6 +249,52 @@
     .optBtn:hover{transform:translateY(-1px); border-color:rgba(255,255,255,.26)}
     .feedback{margin-top:10px; font-weight:1000}
 
+    .levelIntroOverlay{
+      position:fixed; inset:0;
+      display:none;
+      place-items:center;
+      background:rgba(0,0,0,.72);
+      backdrop-filter: blur(5px);
+      z-index:85;
+      opacity:1;
+      transition:opacity .35s ease;
+    }
+    .levelIntroOverlay.show{display:grid}
+    .levelIntroOverlay.fadeOut{opacity:0}
+    .levelIntroCard{
+      width:min(780px, calc(100vw - 30px));
+      max-height:min(88vh, 900px);
+      overflow:auto;
+      border-radius:18px;
+      background:var(--card2);
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow:0 24px 80px rgba(0,0,0,.65);
+      padding:18px;
+      text-align:center;
+    }
+    .levelIntroText{
+      margin:0;
+      white-space:pre-wrap;
+      line-height:1.45;
+      font-size:17px;
+      font-weight:800;
+      color:#fff;
+      text-align:left;
+      font-family:inherit;
+    }
+    .levelIntroActions{display:flex; justify-content:center; margin-top:14px}
+    .levelIntroBtn{
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:13px;
+      padding:12px 18px;
+      font-weight:1000;
+      cursor:pointer;
+      color:#fff;
+      background:linear-gradient(135deg, #ff4fb3, #ff2d86);
+      transition:transform .15s ease, box-shadow .2s ease;
+    }
+    .levelIntroBtn:hover{transform:translateY(-1px); box-shadow:0 0 20px rgba(255,79,179,.38)}
+
     .ytWrap{width:100%; aspect-ratio:16/9; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,.14); background:#000;}
     .ytWrap iframe{width:100%; height:100%; border:0}
     .imgBox{
@@ -374,6 +420,15 @@
     </div>
   </div>
 
+  <div class="levelIntroOverlay" id="level2IntroOverlay" aria-hidden="true">
+    <div class="levelIntroCard">
+      <pre class="levelIntroText" id="level2IntroText"></pre>
+      <div class="levelIntroActions">
+        <button class="levelIntroBtn" id="level2StartBtn">Let's Go →</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CONGRATS OVERLAY + CONFETTI -->
   <canvas class="confettiFull" id="confettiCanvas"></canvas>
   <div class="winOverlay" id="winOverlay">
@@ -456,6 +511,10 @@
   const modalBody = document.getElementById("modalBody");
   const modalHint = document.getElementById("modalHint");
   const doneBtn = document.getElementById("doneBtn");
+
+  const level2IntroOverlay = document.getElementById("level2IntroOverlay");
+  const level2IntroText = document.getElementById("level2IntroText");
+  const level2StartBtn = document.getElementById("level2StartBtn");
 
   // Congrats overlay + confetti
   const winOverlay = document.getElementById("winOverlay");
@@ -642,6 +701,22 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
     osc.connect(g).connect(evansInGain);
     osc.start(t);
     osc.stop(t+0.34);
+  }
+
+  function playAttackSfx(){
+    if(!ac || !audioOn) return;
+    const t = ac.currentTime;
+    const osc = ac.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(70, t+0.2);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.2, t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+0.24);
+    osc.connect(g).connect(ac.destination);
+    osc.start(t);
+    osc.stop(t+0.26);
   }
 
   muteBtn.addEventListener("click",()=>{
@@ -906,12 +981,13 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
 
   const IntroT = {
     dioToCenter: 3.2,
-    ghostFrontIn: 2.0,
-    ghostSecondIn: 2.0,
-    franticLook: 2.2,
-    rushAndHit: 1.2,
-    ouchHold: 1.4,
-    popShow: 3.2,
+
+    // Ghost choreography state machine timing
+    ghostsEnter: 2.0,
+    dioPanics: 0.95,
+    attack: 0.2,
+    retreat: 1.7,
+
     fadeOut: 2.6,
     blackHold: 1.6,
 
@@ -956,6 +1032,14 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
     g2:  {x:0, y:0, r:9, wig:0, shade:1},
     pops: [],
     fade: 0,
+    attackFlash: 0,
+
+    choreo: {
+      state: "ghosts_enter",
+      panicFacingLeft: false,
+      nextFlipAt: 0,
+      attackTriggered: false
+    },
 
     phase: "timeline",
     phaseStart: 0,
@@ -1037,17 +1121,13 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
 
       const t0=0;
       const t1=t0+IntroT.dioToCenter;
-      const t2=t1+IntroT.ghostFrontIn;
-      const t3=t2+IntroT.ghostSecondIn;
-      const t4=t3+IntroT.franticLook;
-      const t5=t4+IntroT.rushAndHit;
-      const t6=t5+IntroT.ouchHold;
-      const t7=t6+IntroT.popShow;
-      const t8=t7+IntroT.fadeOut;
-      const t9=t8+IntroT.blackHold;
+      const choreoTotal = IntroT.ghostsEnter + IntroT.dioPanics + IntroT.attack + IntroT.retreat;
+      const t2=t1+choreoTotal;
+      const t3=t2+IntroT.fadeOut;
+      const t4=t3+IntroT.blackHold;
 
-      const t10=t9+IntroT.fadeInToGate;
-      const t11=t10+IntroT.walkToGate;
+      const t5=t4+IntroT.fadeInToGate;
+      const t6=t5+IntroT.walkToGate;
 
       const reactionStarts=[];
       let reactionTotal=0;
@@ -1056,25 +1136,30 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
         reactionTotal += lineDuration(line);
       }
 
-      const t12=t11+IntroT.deniedHold;
-      const t13=t12+reactionTotal;
-      const t14=t13+IntroT.retreatToLeftStop;
-
-      // Ghosts BOTH from the FRONT (right side)
-      const g1StartX = w + 90,  g2StartX = w + 170;
-      const g1StartY = midY - 60, g2StartY = midY + 60;
-
-      const g1TargetX = dioEndX + 190, g2TargetX = dioEndX + 260;
-      const g1TargetY = midY - 40,     g2TargetY = midY + 40;
-
-      const g1CloseX = dioEndX + 52,   g2CloseX = dioEndX + 86;
-      const g1CloseY = midY - 18,      g2CloseY = midY + 18;
-
-      const g1RetreatX = dioEndX + 260, g2RetreatX = dioEndX + 320;
-      const g1ExitX = w + 130,          g2ExitX = w + 220;
+      const t7=t6+IntroT.deniedHold;
+      const t8=t7+reactionTotal;
+      const t9=t8+IntroT.retreatToLeftStop;
 
       const dioNearGateX = gateX - (18 + dio.r + 2);
       const dioStartX = -60;
+
+      const g1StartX = w + 90;
+      const g2StartX = -90;
+      const g1StartY = midY - 44;
+      const g2StartY = midY + 44;
+
+      const g1NearX = dioEndX + 54;
+      const g2NearX = dioEndX - 54;
+      const g1NearY = midY - 14;
+      const g2NearY = midY + 14;
+
+      const g1AttackX = dioEndX + 4;
+      const g2AttackX = dioEndX - 4;
+      const g1AttackY = midY - 3;
+      const g2AttackY = midY + 3;
+
+      const g1ExitX = w + 140;
+      const g2ExitX = -140;
 
       let drawGhosts = true;
 
@@ -1087,154 +1172,146 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
         g2.x = g2StartX; g2.y = g2StartY;
 
         introState.fade=0;
+        introState.attackFlash = 0;
       }
       else if(tSec < t2){
         dio.x = dioEndX;
-        const u = easeOut(clamp((tSec-t1)/(t2-t1),0,1));
-        g1.x = lerp(g1StartX, g1TargetX, u);
-        g1.y = lerp(g1StartY, g1TargetY, u);
+        const local = tSec - t1;
 
-        g2.x = g2StartX; g2.y = g2StartY;
+        if(local < IntroT.ghostsEnter){
+          introState.choreo.state = "ghosts_enter";
+          const u = easeInOut(clamp(local/IntroT.ghostsEnter,0,1));
+          g1.x = lerp(g1StartX, g1NearX, u);
+          g1.y = lerp(g1StartY, g1NearY, u);
+          g2.x = lerp(g2StartX, g2NearX, u);
+          g2.y = lerp(g2StartY, g2NearY, u);
+          dio.facing = 0;
+          introState.attackFlash = 0;
+          introState.choreo.attackTriggered = false;
+          introState.choreo.nextFlipAt = 0;
+        }
+        else if(local < IntroT.ghostsEnter + IntroT.dioPanics){
+          introState.choreo.state = "dio_panics";
+          const panicElapsed = local - IntroT.ghostsEnter;
+          const u = clamp(panicElapsed/IntroT.dioPanics,0,1);
 
-        dio.facing = 0;
-        introState.fade=0;
+          g1.x = lerp(g1NearX, g1AttackX + 18, easeInOut(u));
+          g1.y = lerp(g1NearY, g1AttackY, easeOut(u));
+          g2.x = lerp(g2NearX, g2AttackX - 18, easeInOut(u));
+          g2.y = lerp(g2NearY, g2AttackY, easeOut(u));
+
+          const flipInterval = lerp(400, 120, u);
+          if(introState.choreo.nextFlipAt===0){
+            introState.choreo.nextFlipAt = now + flipInterval;
+          }
+          if(now >= introState.choreo.nextFlipAt){
+            introState.choreo.panicFacingLeft = !introState.choreo.panicFacingLeft;
+            introState.choreo.nextFlipAt = now + flipInterval;
+          }
+          dio.facing = introState.choreo.panicFacingLeft ? Math.PI : 0;
+          introState.attackFlash = 0;
+        }
+        else if(local < IntroT.ghostsEnter + IntroT.dioPanics + IntroT.attack){
+          introState.choreo.state = "attack";
+          const attackElapsed = local - IntroT.ghostsEnter - IntroT.dioPanics;
+          const u = clamp(attackElapsed/IntroT.attack,0,1);
+
+          g1.x = lerp(g1AttackX + 18, g1AttackX, easeInOut(u));
+          g1.y = lerp(g1AttackY, g1AttackY, u);
+          g2.x = lerp(g2AttackX - 18, g2AttackX, easeInOut(u));
+          g2.y = lerp(g2AttackY, g2AttackY, u);
+          dio.facing = 0;
+
+          if(!introState.choreo.attackTriggered){
+            introState.choreo.attackTriggered = true;
+            spawnPops(dio.x, dio.y);
+            playAttackSfx();
+          }
+          introState.attackFlash = lerp(0.85, 0.15, u);
+        }
+        else {
+          introState.choreo.state = "retreat";
+          const retreatElapsed = local - IntroT.ghostsEnter - IntroT.dioPanics - IntroT.attack;
+          const u = easeInOut(clamp(retreatElapsed/IntroT.retreat,0,1));
+
+          g1.x = lerp(g1AttackX, g1ExitX, u);
+          g1.y = lerp(g1AttackY, midY - 68, easeOut(u));
+          g2.x = lerp(g2AttackX, g2ExitX, u);
+          g2.y = lerp(g2AttackY, midY + 68, easeOut(u));
+          dio.facing = 0;
+          introState.attackFlash = 0;
+
+          for(const p of introState.pops){
+            p.vy += 0.02;
+            p.x += p.vx*0.9;
+            p.y += p.vy*0.9;
+            p.a *= 0.990;
+          }
+        }
+
+        introState.fade = 0;
       }
       else if(tSec < t3){
-        dio.x = dioEndX;
-        g1.x = g1TargetX; g1.y = g1TargetY;
-
-        const u = easeOut(clamp((tSec-t2)/(t3-t2),0,1));
-        g2.x = lerp(g2StartX, g2TargetX, u);
-        g2.y = lerp(g2StartY, g2TargetY, u);
-
-        dio.facing=0;
-        introState.fade=0;
-      }
-      else if(tSec < t4){
-        dio.x = dioEndX;
-        const u = clamp((tSec-t3)/(t4-t3),0,1);
-
-        g1.x = lerp(g1TargetX, g1CloseX, easeInOut(u));
-        g2.x = lerp(g2TargetX, g2CloseX, easeInOut(u));
-        g1.y = lerp(g1TargetY, g1CloseY, easeOut(u));
-        g2.y = lerp(g2TargetY, g2CloseY, easeOut(u));
-
-        dio.facing = 0;
-        introState.fade=0;
-      }
-      else if(tSec < t5){
-        dio.x = dioEndX;
-        const u = easeInOut(clamp((tSec-t4)/(t5-t4),0,1));
-
-        // ghosts overlap ON TOP (your ask)
-        g1.x = lerp(g1CloseX, dioEndX + 2, u);
-        g2.x = lerp(g2CloseX, dioEndX + 6, u);
-        g1.y = lerp(g1CloseY, midY - 6, u);
-        g2.y = lerp(g2CloseY, midY + 6, u);
-
-        dio.facing=0;
-
-        if(u > 0.92 && introState.pops.length===0){
-          spawnPops(dio.x, dio.y);
-        }
-        introState.fade=0;
-      }
-      else if(tSec < t6){
+        introState.choreo.state = "next";
         dio.x = dioEndX;
         dio.facing=0;
 
-        for(const p of introState.pops){
-          p.vy += 0.035;
-          p.x += p.vx*1.4;
-          p.y += p.vy*1.4;
-          p.a *= 0.996;
-          p.s *= 0.999;
-        }
-        bubbleText="Ouch!";
-        introState.fade=0;
-      }
-      else if(tSec < t7){
-        dio.x = dioEndX;
-        dio.facing=0;
-
-        const uRet = clamp((tSec-t6)/(t7-t6),0,1);
-        g1.x = lerp(dioEndX + 60, g1RetreatX, easeOut(uRet));
-        g2.x = lerp(dioEndX + 70, g2RetreatX, easeOut(uRet));
-        g1.y = lerp(midY - 18, midY - 70, easeOut(uRet));
-        g2.y = lerp(midY + 18, midY + 70, easeOut(uRet));
-
-        for(const p of introState.pops){
-          p.vy += 0.028;
-          p.x += p.vx*1.15;
-          p.y += p.vy*1.15;
-          p.a *= 0.994;
-          p.s *= 0.999;
-        }
-        introState.fade=0;
-      }
-      else if(tSec < t8){
-        dio.x = dioEndX;
-        dio.facing=0;
-
-        const uFade = clamp((tSec-t7)/(t8-t7),0,1);
-        g1.x = lerp(g1RetreatX, g1ExitX, easeInOut(uFade));
-        g2.x = lerp(g2RetreatX, g2ExitX, easeInOut(uFade));
-        g1.y = lerp(midY - 70, midY - 90, easeInOut(uFade));
-        g2.y = lerp(midY + 70, midY + 90, easeInOut(uFade));
+        const uFade = clamp((tSec-t2)/(t3-t2),0,1);
+        introState.fade = uFade;
+        drawGhosts=false;
 
         for(const p of introState.pops){
           p.vy += 0.02;
-          p.x += p.vx*0.9;
-          p.y += p.vy*0.9;
-          p.a *= 0.990;
+          p.x += p.vx*0.8;
+          p.y += p.vy*0.8;
+          p.a *= 0.986;
         }
-        introState.fade = uFade;
       }
-      else if(tSec < t9){
+      else if(tSec < t4){
         introState.fade = 1;
         dio.x = dioEndX;
         drawGhosts=false;
       }
-      else if(tSec < t10){
-        const u = clamp((tSec-t9)/(t10-t9),0,1);
+      else if(tSec < t5){
+        const u = clamp((tSec-t4)/(t5-t4),0,1);
         introState.fade = 1-u;
         dio.x = dioEndX;
         drawGhosts=false;
         showGate=true;
       }
-      else if(tSec < t11){
-        const u = clamp((tSec-t10)/(t11-t10),0,1);
+      else if(tSec < t6){
+        const u = clamp((tSec-t5)/(t6-t5),0,1);
         introState.fade=0;
         dio.x = lerp(dioEndX, dioNearGateX, easeInOut(u));
         drawGhosts=false;
         showGate=true;
         if(u<0.55) bubbleText="I better get outta here while I can…";
       }
-      else if(tSec < t12){
+      else if(tSec < t7){
         introState.fade=0;
         dio.x = dioNearGateX;
         drawGhosts=false;
         showGate=true; showDenied=true;
 
-        const tLocal = tSec - t11;
+        const tLocal = tSec - t6;
         if(tLocal < 0.55) gateShake = Math.sin(tLocal * 42) * 2.2;
         showGateLines = (tLocal >= 0.55);
       }
-      else if(tSec < t13){
+      else if(tSec < t8){
         introState.fade=0;
         dio.x = dioNearGateX;
         drawGhosts=false;
         showGate=true; showDenied=true; showGateLines=true;
 
-        const tLocal = tSec - t12;
+        const tLocal = tSec - t7;
         let idx=0;
         for(let i=0;i<reactionStarts.length;i++){
           if(tLocal >= reactionStarts[i]) idx=i;
         }
         bubbleText = IntroT.reactionLines[idx];
       }
-      else if(tSec < t14){
-        const u = clamp((tSec-t13)/(t14-t13),0,1);
+      else if(tSec < t9){
+        const u = clamp((tSec-t8)/(t9-t8),0,1);
         introState.fade=0;
         dio.facing = Math.PI;
         dio.x = lerp(dioNearGateX, leftStopX, easeInOut(u));
@@ -1356,6 +1433,11 @@ Then… you’ll enter the gate, and what’s waiting beyond it?
 
     // Bubble
     if(bubbleText) drawSpeechBubble(ictx, dio.x, dio.y, bubbleText);
+
+    if(introState.attackFlash>0){
+      ictx.fillStyle = `rgba(0,0,0,${introState.attackFlash})`;
+      ictx.fillRect(0,0,w,h);
+    }
 
     // Fade overlay
     if(introState.fade>0){
@@ -1506,6 +1588,38 @@ More laughs. More late talks. More “remember when…”.
 
 Will you be my Valentine? 💗`;
 
+  const level2IntroMessage =
+`💝 CUPID'S LOVE MAZE 💝
+
+─────────────────────────────────────────
+
+His memories have returned, but the gate
+remains sealed. Something is still lost.
+
+The shadows scattered 5 pieces of his
+heart across this maze - each one holding
+something precious. A song. A moment.
+A treasure that makes him whole.
+
+He needs your help to find them all.
+
+──── THE MISSION ────
+
+🎮 Navigate using arrow keys
+👻 Avoid the shadow guardians
+💗 Find all 5 pieces of his heart
+✨ Discover what each piece holds
+💚 Collect all 5 to unlock the gate
+
+Each heart will reveal something special -
+something that matters deeply to him.
+
+When all 5 hearts are collected, the maze
+will glow green and the gate will finally
+open.
+
+Ready for the final search, CUPID?`;
+
   // =========================
   // GAME CONFIG
   // =========================
@@ -1550,6 +1664,7 @@ Will you be my Valentine? 💗`;
 
   let items = []; // {id, kind, x,y,r,collected}
   let hasWon = false;
+  let awaitingLevel2Start = false;
 
   const player={x:0,y:0,r:9,dx:0,dy:0,nextDx:0,nextDy:0};
 
@@ -1747,6 +1862,78 @@ Will you be my Valentine? 💗`;
     return picks.slice(0,count);
   }
 
+  function pickSpreadCollectibles(rng, dist, count){
+    const spawnR = (player.y/tileSize)|0;
+    const spawnC = (player.x/tileSize)|0;
+    const walkable=[];
+
+    for(let r=1;r<ROWS-1;r++){
+      for(let c=1;c<COLS-1;c++){
+        if(map[r][c]!==0 || dist[r][c] < 0) continue;
+        walkable.push({r,c});
+      }
+    }
+
+    function quadrantOf(cell){
+      const top = cell.r < ROWS/2;
+      const left = cell.c < COLS/2;
+      if(top && left) return 0;
+      if(top && !left) return 1;
+      if(!top && left) return 2;
+      return 3;
+    }
+
+    function farEnough(cell, chosen, minSep, minSpawn){
+      const spawnDist = Math.abs(cell.r-spawnR)+Math.abs(cell.c-spawnC);
+      if(spawnDist < minSpawn) return false;
+      for(const p of chosen){
+        const d = Math.abs(p.r-cell.r)+Math.abs(p.c-cell.c);
+        if(d < minSep) return false;
+      }
+      return true;
+    }
+
+    const chosen=[];
+    let minSep = 8;
+    let minSpawn = 6;
+
+    for(let relax=0; relax<4 && chosen.length<count; relax++){
+      const byQuad=[[],[],[],[]];
+      for(const cell of walkable){
+        const q = quadrantOf(cell);
+        byQuad[q].push(cell);
+      }
+
+      for(const quadCells of byQuad){
+        for(let i=quadCells.length-1;i>0;i--){
+          const j=(rand01(rng)*(i+1))|0;
+          [quadCells[i],quadCells[j]]=[quadCells[j],quadCells[i]];
+        }
+        const found = quadCells.find(cell=>farEnough(cell, chosen, minSep, minSpawn));
+        if(found && chosen.length<count) chosen.push(found);
+      }
+
+      const pool = walkable.slice();
+      for(let i=pool.length-1;i>0;i--){
+        const j=(rand01(rng)*(i+1))|0;
+        [pool[i],pool[j]]=[pool[j],pool[i]];
+      }
+      for(const cell of pool){
+        if(chosen.length>=count) break;
+        if(farEnough(cell, chosen, minSep, minSpawn)) chosen.push(cell);
+      }
+
+      minSep = Math.max(3, minSep-2);
+      minSpawn = Math.max(2, minSpawn-1);
+    }
+
+    while(chosen.length<count && walkable.length){
+      chosen.push(walkable[(rand01(rng)*walkable.length)|0]);
+    }
+
+    return chosen.slice(0,count);
+  }
+
   function resetPlayer(){
     player.x=1.5*tileSize;
     player.y=1.5*tileSize;
@@ -1774,7 +1961,7 @@ Will you be my Valentine? 💗`;
 
     const pr=(player.y/tileSize)|0, pc=(player.x/tileSize)|0;
     const dist=bfsDist(pr,pc);
-    const spots=pickFarthest(rng, dist, TOTAL_ITEMS_PER_LEVEL);
+    const spots=pickSpreadCollectibles(rng, dist, TOTAL_ITEMS_PER_LEVEL);
 
     items=[];
     collected=0;
@@ -1816,6 +2003,16 @@ Will you be my Valentine? 💗`;
     const saved = localStorage.getItem(ITEMS_KEY);
     if(saved){ try{ obj = JSON.parse(saved)||{}; }catch(e){ obj={}; } }
     obj[level] = items.map(it=>!!it.collected);
+    localStorage.setItem(ITEMS_KEY, JSON.stringify(obj));
+  }
+
+  function clearItemFlagsForLevel(lvl){
+    let obj = {};
+    const saved = localStorage.getItem(ITEMS_KEY);
+    if(saved){
+      try{ obj = JSON.parse(saved)||{}; }catch(e){ obj={}; }
+    }
+    delete obj[lvl];
     localStorage.setItem(ITEMS_KEY, JSON.stringify(obj));
   }
 
@@ -2044,6 +2241,30 @@ Will you be my Valentine? 💗`;
     if(collected>=TOTAL_ITEMS_PER_LEVEL) setGateOpen(true);
   }
 
+  function openLevel2Intro(){
+    awaitingLevel2Start = true;
+    paused = true;
+    level2IntroText.textContent = level2IntroMessage;
+    level2IntroOverlay.classList.remove("fadeOut");
+    level2IntroOverlay.classList.add("show");
+    level2IntroOverlay.setAttribute("aria-hidden", "false");
+  }
+
+  function startLevel2FromPopup(){
+    if(!awaitingLevel2Start) return;
+    awaitingLevel2Start = false;
+    level2IntroOverlay.classList.add("fadeOut");
+
+    setTimeout(()=>{
+      level2IntroOverlay.classList.remove("show", "fadeOut");
+      level2IntroOverlay.setAttribute("aria-hidden", "true");
+      paused = false;
+      clearItemFlagsForLevel(2);
+      localStorage.setItem(COLLECT_KEY, "0");
+      startLevel(2, true);
+    }, 250);
+  }
+
   function tryGateTransition(){
     const g=findGate();
     if(!g) return;
@@ -2052,7 +2273,7 @@ Will you be my Valentine? 💗`;
     const gx=(g.c+0.5)*tileSize, gy=(g.r+0.5)*tileSize;
     if(Math.hypot(player.x-gx, player.y-gy) < tileSize*0.6){
       if(level===1){
-        startLevel(2, true);
+        openLevel2Intro();
       } else {
         triggerCongrats();
       }
@@ -2218,6 +2439,9 @@ Will you be my Valentine? 💗`;
 
   function startLevel(n, doFade){
     hasWon=false;
+    awaitingLevel2Start = false;
+    level2IntroOverlay.classList.remove("show", "fadeOut");
+    level2IntroOverlay.setAttribute("aria-hidden", "true");
 
     level=n;
     map = buildLevelMaze(level);
@@ -2851,6 +3075,13 @@ Will you be my Valentine? 💗`;
     setMusicVolume("game");
     rampHumTo(audioOn ? 0.05 : 0.0001, 1.2);
     startLevel(1, true);
+  });
+
+  level2StartBtn.addEventListener("click", ()=>{
+    startAudioOnce();
+    setMusicVolume("game");
+    rampHumTo(audioOn ? 0.05 : 0.0001, 0.8);
+    startLevel2FromPopup();
   });
 
   resetBtn.addEventListener("click",()=>{
