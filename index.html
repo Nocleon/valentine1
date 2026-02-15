@@ -412,6 +412,8 @@
       from{transform:translateY(100%)}
       to{transform:translateY(-100%)}
     }
+
+    .creditsNote{margin:10px 0 0; color:var(--muted); font-weight:900; font-size:13px}
   </style>
 </head>
 <body>
@@ -556,9 +558,9 @@
       <div class="creditsScroll">
         <div class="creditsInner" id="creditsInner"></div>
       </div>
+      <p class="creditsNote">Tap <b>Done</b> to return to the celebration and click floating hearts for surprise memories.</p>
       <div class="btnRow" style="justify-content:center; margin-top:16px">
-        <button class="btn ghost" id="restartBtn">Restart</button>
-        <button class="btn primary" id="mainMenuBtn">Main Menu</button>
+        <button class="btn primary" id="creditsDoneBtn">Done</button>
       </div>
     </div>
   </div>
@@ -653,8 +655,7 @@
   const inviteContinueBtn = document.getElementById("inviteContinueBtn");
   const creditsOverlay = document.getElementById("creditsOverlay");
   const creditsInner = document.getElementById("creditsInner");
-  const restartBtn = document.getElementById("restartBtn");
-  const mainMenuBtn = document.getElementById("mainMenuBtn");
+  const creditsDoneBtn = document.getElementById("creditsDoneBtn");
   const endingTitle = document.getElementById("endingTitle");
 
   function showLayer(layer){
@@ -2747,10 +2748,69 @@ Ready for the final search, CUPID?`;
     nextLineAt: 0,
 
     heart: {active:false, x:0,y:0, r:16, hover:false, pulse:0, clickable:false},
+    floatingHearts: [],
+    floatingHeartHover: -1,
+    floatingHeartCooldownUntil: 0,
     celebrationTimer: null,
     inviteTimer: null,
     fade: 0
   };
+
+  function seedFloatingHearts(count=7){
+    const w = endingCanvas.width;
+    const h = endingCanvas.height;
+    ending.floatingHearts = Array.from({length:count}, (_, i)=>({
+      x: Math.random() * w,
+      y: h*(0.18 + Math.random()*0.46),
+      r: 13 + Math.random()*8,
+      driftX: (Math.random()*2 - 1) * 0.65,
+      driftY: 0.18 + Math.random()*0.35,
+      pulse: Math.random()*Math.PI*2,
+      phase: Math.random()*Math.PI*2,
+      twinkle: 0.45 + Math.random()*0.55,
+      id: i
+    }));
+    ending.floatingHeartHover = -1;
+  }
+
+  function drawFloatingHearts(now, w, h){
+    if(!ending.floatingHearts.length) seedFloatingHearts(7);
+    ending.floatingHearts.forEach((heart, idx)=>{
+      heart.pulse += 0.03;
+      heart.phase += 0.008;
+      heart.x += heart.driftX + Math.sin(heart.phase + idx)*0.04;
+      heart.y -= heart.driftY * 0.42;
+
+      if(heart.y < -40){
+        heart.y = h + 28 + Math.random()*40;
+        heart.x = Math.random() * w;
+      }
+      if(heart.x < -36) heart.x = w + 36;
+      if(heart.x > w + 36) heart.x = -36;
+
+      const hover = idx===ending.floatingHeartHover;
+      const pulseScale = 1 + 0.09*Math.sin(heart.pulse);
+      const hoverScale = hover ? 1.16 : 1;
+      const scale = pulseScale * hoverScale;
+
+      ectx.save();
+      ectx.translate(heart.x, heart.y + Math.sin(heart.phase*2.2)*2.5);
+      ectx.scale(scale, scale);
+      ectx.shadowColor = hover ? "rgba(255,120,220,0.95)" : "rgba(255,79,179,0.75)";
+      ectx.shadowBlur = hover ? 28 : 20;
+      ectx.beginPath();
+      ectx.moveTo(0,6);
+      ectx.bezierCurveTo(0,-2,-12,-2,-12,6);
+      ectx.bezierCurveTo(-12,14,0,18,0,26);
+      ectx.bezierCurveTo(0,18,12,14,12,6);
+      ectx.bezierCurveTo(12,-2,0,-2,0,6);
+      ectx.closePath();
+      const alpha = 0.56 + 0.34*Math.sin(now*0.002 + heart.twinkle);
+      ectx.fillStyle = hover ? `rgba(255,150,223,${Math.min(0.98, alpha+0.12)})` : `rgba(255,79,179,${alpha})`;
+      ectx.fill();
+      ectx.restore();
+    });
+  }
 
   function drawMeadowBackground(w,h){
     ectx.fillStyle="#f7f7ff";
@@ -2937,6 +2997,7 @@ Ready for the final search, CUPID?`;
     ending.t0 = performance.now();
     ending.heart.active = false;
     ending.heart.clickable = false;
+    seedFloatingHearts();
 
     endingTitle.style.display = "block";
     startConfetti();
@@ -2991,6 +3052,24 @@ Ready for the final search, CUPID?`;
     ending.phase = "credits";
   }
 
+  function closeCreditsAndResumeCelebration(){
+    creditsOverlay.classList.remove("show");
+    setTimeout(()=>{
+      creditsOverlay.style.display = "none";
+      creditsOverlay.setAttribute("aria-hidden", "true");
+    }, 320);
+
+    ending.phase = "celebration";
+    ending.t0 = performance.now();
+    if(!confettiRunning) startConfetti();
+    if(ending.celebrationTimer) clearTimeout(ending.celebrationTimer);
+    ending.celebrationTimer = setTimeout(()=>{
+      confettiRunning=false;
+      confettiCanvas.style.display="none";
+      cctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+    }, 6000);
+  }
+
   yesValBtn.addEventListener("click", startCelebration);
   noValBtn.addEventListener("mouseenter", dodgeNoButton);
   noValBtn.addEventListener("pointerdown", (e)=>{ e.preventDefault(); dodgeNoButton(); });
@@ -3001,11 +3080,35 @@ Ready for the final search, CUPID?`;
   });
 
   inviteContinueBtn.addEventListener("click", showCredits);
-  restartBtn.addEventListener("click", ()=> location.reload());
-  mainMenuBtn.addEventListener("click", ()=>{
-    setProgress(Progress.MISSION_SHOWN);
-    location.reload();
-  });
+  creditsDoneBtn.addEventListener("click", closeCreditsAndResumeCelebration);
+
+  function updateFloatingHeartPointer(e){
+    const canInteract = ending.mode==="on"
+      && endingLayer.classList.contains("active")
+      && (ending.phase==="celebration" || ending.phase==="credits")
+      && creditsOverlay.getAttribute("aria-hidden") !== "false"
+      && modalOverlay.style.display !== "grid"
+      && performance.now() >= ending.floatingHeartCooldownUntil;
+    if(!canInteract || !ending.floatingHearts.length){
+      ending.floatingHeartHover = -1;
+      return -1;
+    }
+
+    const rect = endingCanvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (endingCanvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (endingCanvas.height / rect.height);
+
+    let found = -1;
+    for(let i=0;i<ending.floatingHearts.length;i++){
+      const h = ending.floatingHearts[i];
+      if(Math.hypot(mx - h.x, my - h.y) <= h.r * 1.15){
+        found = i;
+        break;
+      }
+    }
+    ending.floatingHeartHover = found;
+    return found;
+  }
 
   function updateHeartPointer(e){
     if(ending.mode!=="on" || !ending.heart.active) return false;
@@ -3013,17 +3116,29 @@ Ready for the final search, CUPID?`;
     const mx = (e.clientX - rect.left) * (endingCanvas.width / rect.width);
     const my = (e.clientY - rect.top) * (endingCanvas.height / rect.height);
     ending.heart.hover = (Math.hypot(mx-ending.heart.x, my-ending.heart.y) <= ending.heart.r*1.05);
-    endingCanvas.style.cursor = ending.heart.hover ? "pointer" : "default";
     return ending.heart.hover;
   }
 
-  endingCanvas.addEventListener("pointermove", updateHeartPointer);
   endingCanvas.addEventListener("pointerdown", (e)=>{
     if(!updateHeartPointer(e) || !ending.heart.clickable) return;
     playHeartUnlockSfx();
     ending.heart.active=false;
     endingCanvas.style.cursor="default";
     showValentineModal();
+  });
+
+  endingCanvas.addEventListener("pointermove", (e)=>{
+    const heartHover = updateHeartPointer(e);
+    const floatingHover = updateFloatingHeartPointer(e);
+    endingCanvas.style.cursor = (heartHover || floatingHover>=0) ? "pointer" : "default";
+  });
+
+  endingCanvas.addEventListener("pointerdown", (e)=>{
+    const hitFloating = updateFloatingHeartPointer(e);
+    if(hitFloating < 0) return;
+    ending.floatingHeartCooldownUntil = performance.now() + 180;
+    const randomIdx = Math.floor(Math.random() * level2Popups.length);
+    showLevel2Modal(randomIdx);
   });
 
   function drawEndingFrame(now){
@@ -3128,9 +3243,14 @@ Ready for the final search, CUPID?`;
         requestAnimationFrame(drawEndingFrame); return;
       }
 
-      const bounce = (ending.phase==="celebration" || ending.phase==="credits") ? Math.sin(now*0.012)*8 : 0;
+      const celebratoryPhase = (ending.phase==="celebration" || ending.phase==="credits");
+      const bounce = celebratoryPhase ? Math.sin(now*0.012)*8 : 0;
       drawDioPac(ectx, ending.pink.x, ending.pink.y + bounce, now, 0, "#ff4fb3", 18);
       drawDioPac(ectx, ending.blue.x, ending.blue.y + bounce, now, Math.PI, "#3aa0ff", 18);
+
+      if(celebratoryPhase){
+        drawFloatingHearts(now, w, h);
+      }
 
       if(ending.phase==="meetDialogueAuto"){
         if(ending.bubbleText){
