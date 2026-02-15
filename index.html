@@ -248,6 +248,16 @@
     }
     .optBtn:hover{transform:translateY(-1px); border-color:rgba(255,255,255,.26)}
     .feedback{margin-top:10px; font-weight:1000}
+    .heartPopupCaption{
+      margin:0 0 12px;
+      text-align:center;
+      font-family:'Dancing Script','Great Vibes','Pacifico',cursive;
+      font-size:clamp(22px,3.4vw,30px);
+      line-height:1.08;
+      color:#ff7bc9;
+      text-shadow:0 2px 12px rgba(255,79,179,.28);
+      font-weight:700;
+    }
 
     .levelIntroOverlay{
       position:fixed; inset:0;
@@ -2261,11 +2271,12 @@ Ready for the final search, CUPID?`;
 
   function showLevel2Modal(idx){
     const data=level2Popups[idx] || level2Popups[level2Popups.length-1];
+    const captionHTML = `<p class="heartPopupCaption">${escapeHTML(data.title)}</p>`;
 
     if(data.type==="youtube"){
       showModal({
         title:"💗 Found a heart!",
-        bodyHTML:`<p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
+        bodyHTML:`${captionHTML}
           <div class="ytWrap"><iframe src="${data.src}" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>
           <p class="small" style="margin-top:10px">Click <b>Continue</b> when you’re finished.</p>`,
         doneEnabled:true
@@ -2282,6 +2293,7 @@ Ready for the final search, CUPID?`;
       showModal({
         title:"💗 Found a heart!",
         bodyHTML:`
+          ${captionHTML}
           <div style="position: relative; width: 100%; height: 0; padding-top: ${padTop};
             padding-bottom: 0; box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); margin-top: 1.6em; margin-bottom: 0.9em; overflow: hidden;
             border-radius: 8px; will-change: transform;">
@@ -2289,7 +2301,6 @@ Ready for the final search, CUPID?`;
               src="${safeEmbedSrc}" allowfullscreen="allowfullscreen" allow="fullscreen">
             </iframe>
           </div>
-          <p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
           <a href="${safeLinkHref}" target="_blank" rel="noopener noreferrer">${safeLinkText}</a>${safeByline ? ` by ${safeByline}` : ""}
           <p class="small" style="margin-top:10px">Click <b>Continue</b> when you’re finished.</p>`,
         doneEnabled:true
@@ -2299,7 +2310,7 @@ Ready for the final search, CUPID?`;
 
     showModal({
       title:"💗 Found a heart!",
-      bodyHTML:`<p style="margin:0 0 10px"><b>${escapeHTML(data.title)}</b></p>
+      bodyHTML:`${captionHTML}
         <div style="white-space:pre-wrap; background:#0c0d1d; border:1px solid rgba(255,255,255,.14);
           border-radius:14px; padding:22px; color:#ffeef9; line-height:1.72; max-width:680px;
           margin:0 auto; font-family:'Dancing Script','Great Vibes','Pacifico',cursive; font-size:26px;">${escapeHTML(data.text)}</div>
